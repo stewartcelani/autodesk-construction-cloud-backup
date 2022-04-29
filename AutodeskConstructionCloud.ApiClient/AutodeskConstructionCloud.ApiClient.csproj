@@ -12,7 +12,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="RestApiResponses" />
+      <Folder Include="Entities" />
     </ItemGroup>
 
     <ItemGroup>

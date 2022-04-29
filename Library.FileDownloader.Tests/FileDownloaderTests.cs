@@ -1,10 +1,10 @@
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
 using FluentAssertions;
+using Library.Logger;
 
 namespace Library.FileDownloader.Tests;
 
@@ -49,7 +49,7 @@ public class FileDownloaderTests
         var config = new FileDownloaderConfiguration(
             6, 
             5, 
-            s => Console.WriteLine(s)
+            new NLogLogger()
         );
         var sut = new FileDownloader(config);
         FileInfo file = await sut.DownloadAsync(_file.DownloadUrl, _file.DownloadPath);

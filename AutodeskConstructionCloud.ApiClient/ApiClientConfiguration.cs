@@ -1,4 +1,5 @@
-﻿using Polly;
+﻿using System.CodeDom.Compiler;
+using Polly;
 using Polly.Retry;
 
 namespace AutodeskConstructionCloud.ApiClient;
@@ -8,7 +9,7 @@ public class ApiClientConfiguration : ApiClientOptions
     public string ClientId { get; }
     public string ClientSecret { get; }
     public string AccountId { get; }
-    public RetryPolicy RetryPolicy { get; }
+    public AsyncRetryPolicy RetryPolicy { get; set; }
 
     public ApiClientConfiguration(string clientId, string clientSecret, string accountId)
     {
@@ -18,12 +19,27 @@ public class ApiClientConfiguration : ApiClientOptions
         RetryPolicy = GetRetryPolicy(RetryAttempts, InitialRetryInSeconds);
     }
 
-    private static RetryPolicy GetRetryPolicy(int retryAttempts, int initialRetryDelayInSeconds)
+    public AsyncRetryPolicy GetRetryPolicy(int retryAttempts, int initialRetryDelayInSeconds)
     {
         return Policy
             .Handle<Exception>()
-            .WaitAndRetry(retryAttempts, 
-                retryAttempt => TimeSpan.FromSeconds(retryAttempt * initialRetryDelayInSeconds)
-            );
+            .Or<HttpRequestException>()
+            .WaitAndRetryAsync(
+                retryCount: retryAttempts,
+                sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(retryAttempt * initialRetryDelayInSeconds),
+                onRetry: (exception, sleepDuration, retryAttempt, context) =>
+                {
+                    int attemptsRemaining = retryAttempts - retryAttempt;
+                    string message = $"Error communicating with Autodesk API. " +
+                                     $"Retry {retryAttempt}/{retryAttempts} in {sleepDuration.Seconds} seconds.";
+                    if (attemptsRemaining == 0)
+                    {
+                        Logger?.Error(exception, message);
+                    }
+                    else
+                    {
+                        Logger?.Warn(exception, message);
+                    }
+                });
     }
 }

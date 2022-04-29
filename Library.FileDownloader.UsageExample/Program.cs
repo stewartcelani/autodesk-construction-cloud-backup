@@ -1,4 +1,5 @@
 ﻿using Library.FileDownloader;
+using Library.Logger;
 
 /*
  * If no configuration is passed to FileDownloader the default FileDownloaderConfiguration
@@ -7,7 +8,7 @@
 var config = new FileDownloaderConfiguration(
     6, 
     5, 
-    s => Console.WriteLine(s)
+    new NLogLogger()
 );
 var downloader = new FileDownloader(config);
 

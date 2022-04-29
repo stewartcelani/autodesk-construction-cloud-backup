@@ -24,10 +24,10 @@ public class FileDownloader
             await using FileStream fileStream = new (downloadPath, FileMode.Create);
             await stream.CopyToAsync(fileStream, ct);
             var fileInfo = new FileInfo(downloadPath);
-            if (_config.LoggingMethod is not null)
+            if (_config.Logger is not null)
             {
                 var fileSizeInMb = (decimal)Math.Round((((fileInfo.Length) / 1024f) / 1024f),2);
-                _config.LoggingMethod($"{fileInfo.FullName} ({fileSizeInMb} MB)");
+                _config.Logger.Info($"{fileInfo.FullName} ({fileSizeInMb} MB)");
             }
             return fileInfo;
         });

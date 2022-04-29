@@ -7,17 +7,17 @@ ApiClient api1 = TwoLeggedApiClient
     .WithClientId("AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY")
     .AndClientSecret("wE3GFhuIsGJEi3d4")
     .ForAccount("f33e018a-d1f5-4ef3-ae67-606de6aeed87")
-    .WithOptions(options => // .WithOptions can be skipped and default values are provided
+    .WithOptions(options => 
     {
         options.RetryAttempts = 4;
         options.InitialRetryInSeconds = 15;
+        options.Logger = new NLogLogger(); // Logger is null (no logging) by default
     })
     .CreateApiClient();
 
 Console.WriteLine(api1.Config.ClientId); // AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY
 Console.WriteLine(api1.Config.RetryAttempts); // 4
 Console.WriteLine(api1.Config.InitialRetryInSeconds); // 15
-api1.Example(); // "Example of INFO logging via NLog."
 Console.WriteLine();
 
 
@@ -26,14 +26,7 @@ ApiClient api2 = TwoLeggedApiClient
     .WithClientId("AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY")
     .AndClientSecret("wE3GFhuIsGJEi3d4")
     .ForAccount("f33e018a-d1f5-4ef3-ae67-606de6aeed87")
-    .WithOptions(options =>
-    {
-        options.Logger = null; // This will turn off logging
-    })
-    .CreateApiClient();
-api2.Example(); // [There will be no output]
-Console.WriteLine();
-
+    .CreateApiClient(); // .WithOptions can be skipped and default values are provided
 
 ApiClient api3 = TwoLeggedApiClient
     .Configure()
@@ -42,6 +35,8 @@ ApiClient api3 = TwoLeggedApiClient
     .ForAccount("f33e018a-d1f5-4ef3-ae67-606de6aeed87")
     .WithOptions(options =>
     {
+        options.InitialRetryInSeconds = 2;
+        options.RetryAttempts = 2;
         options.Logger = new NLogLogger(new NLogLoggerConfiguration()
         {
             LogLevel = LogLevel.Trace,
@@ -49,5 +44,8 @@ ApiClient api3 = TwoLeggedApiClient
         });
     })
     .CreateApiClient();
-api3.Example(); // "Example of TRACE logging via NLog." + "Example of INFO logging via NLog."
-Console.WriteLine();
+
+Console.WriteLine(api3.Config.InitialRetryInSeconds);
+Console.WriteLine(api3.Config.RetryAttempts);
+
+await api3.GetAllProjects();

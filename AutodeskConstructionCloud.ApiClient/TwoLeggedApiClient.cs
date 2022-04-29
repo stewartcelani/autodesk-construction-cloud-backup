@@ -41,6 +41,8 @@ public class TwoLeggedApiClient :
     {
         var configuration = new ApiClientConfiguration(_clientId, _clientSecret, _accountId);
         config?.Invoke(configuration);
+        configuration.RetryPolicy =
+            configuration.GetRetryPolicy(configuration.RetryAttempts, configuration.InitialRetryInSeconds);
         _configuration = configuration;
         return this;
     }

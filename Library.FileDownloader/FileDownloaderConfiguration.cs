@@ -1,13 +1,13 @@
 ﻿using Polly;
 using Polly.Retry;
-using System;
+using Library.Logger;
 
 namespace Library.FileDownloader;
 
 public class FileDownloaderConfiguration
 {
     public RetryPolicy RetryPolicy { get; }
-    public Action<string>? LoggingMethod { get; } = null;
+    public ILogger? Logger { get; }
 
     /*
      * initialRetryDelayInSeconds doubles each retryAttempt
@@ -16,11 +16,11 @@ public class FileDownloaderConfiguration
     public FileDownloaderConfiguration(
         int retryAttempts = 12,
         int initialRetryDelayInSeconds = 4,
-        Action<string>? loggingMethod = null)
+        ILogger? logger = null)
     {
         RetryPolicy = GetRetryPolicy(retryAttempts, initialRetryDelayInSeconds);
-        if (loggingMethod is not null)
-            LoggingMethod = loggingMethod;
+        if (logger is not null)
+            Logger = logger;
     }
 
     private static RetryPolicy GetRetryPolicy(int retryAttempts, int initialRetryDelayInSeconds)
