@@ -16,7 +16,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\..\..\Library\Library.Logger\Library.Logger\Library.Logger.csproj" />
+      <ProjectReference Include="..\Library.Logger\Library.Logger.csproj" />
     </ItemGroup>
 
 </Project>

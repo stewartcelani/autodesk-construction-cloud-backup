@@ -8,7 +8,7 @@ public class NLogLogger : ILogger
 {
     private readonly NLogLoggerConfiguration _config;
 
-    private NLog.Logger Log { get; set; }
+    private NLog.Logger Log { get; set; } = null!;
 
     public NLogLogger()
     {
@@ -28,111 +28,111 @@ public class NLogLogger : ILogger
         if (_config.LogToConsole)
         {
             var coloredConsoleTarget = new ColoredConsoleTarget("coloredconsole")
-        {
-            
-            UseDefaultRowHighlightingRules = false,                
-            Layout = "${longdate}|${level}|${callsite:fileName=true:includeSourcePath=false:skipFrames=1}|Line:${callsite-linenumber:skipFrames=1}|${message}             ${all-event-properties} ${exception:format=tostring}"
-        };           
-        coloredConsoleTarget.RowHighlightingRules.Add(new ConsoleRowHighlightingRule
-        {
-            Condition = "level == LogLevel.Fatal",
-            ForegroundColor = ConsoleOutputColor.Red,
-            BackgroundColor = ConsoleOutputColor.White
-        });
-        coloredConsoleTarget.RowHighlightingRules.Add(new ConsoleRowHighlightingRule
-        {
-            Condition = "level == LogLevel.Error",
-            ForegroundColor = ConsoleOutputColor.Red,
-            BackgroundColor = ConsoleOutputColor.NoChange
-        });
-        coloredConsoleTarget.RowHighlightingRules.Add(new ConsoleRowHighlightingRule
-        {
-            Condition = "level == LogLevel.Warn",
-            ForegroundColor = ConsoleOutputColor.Yellow,
-            BackgroundColor = ConsoleOutputColor.NoChange
-        });
-        coloredConsoleTarget.RowHighlightingRules.Add(new ConsoleRowHighlightingRule
-        {
-            Condition = "level == LogLevel.Info",
-            ForegroundColor = ConsoleOutputColor.White,
-            BackgroundColor = ConsoleOutputColor.NoChange
-        });
-        coloredConsoleTarget.RowHighlightingRules.Add(new ConsoleRowHighlightingRule
-        {
-            Condition = "level == LogLevel.Debug",
-            ForegroundColor = ConsoleOutputColor.DarkGray,
-            BackgroundColor = ConsoleOutputColor.NoChange
-        });
-        coloredConsoleTarget.RowHighlightingRules.Add(new ConsoleRowHighlightingRule
-        {
-            Condition = "level == LogLevel.Trace",
-            ForegroundColor = ConsoleOutputColor.DarkGray,
-            BackgroundColor = ConsoleOutputColor.NoChange
-        });
-        config.AddRule(minLevel: _config.LogLevel, maxLevel: LogLevel.Fatal, target: coloredConsoleTarget);
+            {
+                
+                UseDefaultRowHighlightingRules = false,                
+                Layout = "${longdate}|${level}|${callsite:fileName=true:includeSourcePath=false:skipFrames=1}|Line:${callsite-linenumber:skipFrames=1}|${message}             ${all-event-properties} ${exception:format=tostring}"
+            };           
+            coloredConsoleTarget.RowHighlightingRules.Add(new ConsoleRowHighlightingRule
+            {
+                Condition = "level == LogLevel.Fatal",
+                ForegroundColor = ConsoleOutputColor.Red,
+                BackgroundColor = ConsoleOutputColor.White
+            });
+            coloredConsoleTarget.RowHighlightingRules.Add(new ConsoleRowHighlightingRule
+            {
+                Condition = "level == LogLevel.Error",
+                ForegroundColor = ConsoleOutputColor.Red,
+                BackgroundColor = ConsoleOutputColor.NoChange
+            });
+            coloredConsoleTarget.RowHighlightingRules.Add(new ConsoleRowHighlightingRule
+            {
+                Condition = "level == LogLevel.Warn",
+                ForegroundColor = ConsoleOutputColor.Yellow,
+                BackgroundColor = ConsoleOutputColor.NoChange
+            });
+            coloredConsoleTarget.RowHighlightingRules.Add(new ConsoleRowHighlightingRule
+            {
+                Condition = "level == LogLevel.Info",
+                ForegroundColor = ConsoleOutputColor.White,
+                BackgroundColor = ConsoleOutputColor.NoChange
+            });
+            coloredConsoleTarget.RowHighlightingRules.Add(new ConsoleRowHighlightingRule
+            {
+                Condition = "level == LogLevel.Debug",
+                ForegroundColor = ConsoleOutputColor.DarkGray,
+                BackgroundColor = ConsoleOutputColor.NoChange
+            });
+            coloredConsoleTarget.RowHighlightingRules.Add(new ConsoleRowHighlightingRule
+            {
+                Condition = "level == LogLevel.Trace",
+                ForegroundColor = ConsoleOutputColor.DarkGray,
+                BackgroundColor = ConsoleOutputColor.NoChange
+            });
+            config.AddRule(minLevel: _config.LogLevel, maxLevel: LogLevel.Fatal, target: coloredConsoleTarget);
         }
         
         LogManager.Configuration = config;
         Log = LogManager.GetCurrentClassLogger();
     }
     
-    public void Trace(string s)
+    public virtual void Trace(string message)
     {
-        Log.Trace(s);
+        Log.Trace(message);
     }
 
-    public void Trace(Exception ex, string s)
+    public virtual void Trace(Exception ex, string message)
     {
-        Log.Trace(ex, s);
+        Log.Trace(ex, message);
     }
 
-    public void Debug(string s)
+    public virtual void Debug(string message)
     {
-        Log.Debug(s);
+        Log.Debug(message);
     }
 
-    public void Debug(Exception ex, string s)
+    public virtual void Debug(Exception ex, string message)
     {
-        Log.Debug(ex, s);
+        Log.Debug(ex, message);
     }
 
-    public void Info(string s)
+    public virtual void Info(string message)
     {
-        Log.Info(s);
+        Log.Info(message);
     }
 
-    public void Info(Exception ex, string s)
+    public virtual void Info(Exception ex, string message)
     {
-        Log.Info(ex, s);
+        Log.Info(ex, message);
     }
 
-    public void Warn(string s)
+    public virtual void Warn(string message)
     {
-        Log.Warn(s);
+        Log.Warn(message);
     }
 
-    public void Warn(Exception ex, string s)
+    public virtual void Warn(Exception ex, string message)
     {
-        Log.Warn(ex, s);
+        Log.Warn(ex, message);
     }
 
-    public void Error(string s)
+    public virtual void Error(string message)
     {
-        Log.Warn(s);
+        Log.Warn(message);
     }
 
-    public void Error(Exception ex, string s)
+    public virtual void Error(Exception ex, string message)
     {
-        Log.Error(ex, s);
+        Log.Error(ex, message);
     }
 
-    public void Fatal(string s)
+    public virtual void Fatal(string message)
     {
-        Log.Fatal(s);
+        Log.Fatal(message);
     }
 
-    public void Fatal(Exception ex, string s)
+    public virtual void Fatal(Exception ex, string message)
     {
-        Log.Fatal(ex, s);
+        Log.Fatal(ex, message);
     }
 }
