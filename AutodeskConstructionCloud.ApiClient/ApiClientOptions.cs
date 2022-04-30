@@ -4,6 +4,7 @@ namespace AutodeskConstructionCloud.ApiClient;
 
 public class ApiClientOptions
 {
+    public HttpClient HttpClient { get; set; } = new HttpClient();
     public ILogger? Logger { get; set; }
     
     /*

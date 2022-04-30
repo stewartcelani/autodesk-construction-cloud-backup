@@ -5,11 +5,10 @@ namespace AutodeskConstructionCloud.ApiClient;
 
 public class ApiClient : IApiClient
 {
-    private HttpClient _http = new();
     private string? _accessToken;
     private DateTime? _accessTokenExpiresAt;
     
-    public ApiClientConfiguration Config { get; }
+    public ApiClientConfiguration Config { get; private set; }
 
     public ApiClient(ApiClientConfiguration config)
     {
@@ -22,14 +21,14 @@ public class ApiClient : IApiClient
         await EnsureAccessToken();
     }
 
-    private async Task EnsureAccessToken()
+    public async Task EnsureAccessToken()
     {
         Config.Logger?.Trace("Top");
         if (_accessTokenExpiresAt is null || _accessTokenExpiresAt < DateTime.Now)
         {
-            Config.Logger?.Trace("Access token expired or null, calling GetAccessToken");
+            Config.Logger?.Debug("Access token expired or null, calling GetAccessToken");
             (_accessToken, _accessTokenExpiresAt) = await GetAccessToken();
-            _http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _accessToken);
+            Config.HttpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _accessToken);
         }
     }
     
@@ -46,7 +45,7 @@ public class ApiClient : IApiClient
         var body = new FormUrlEncodedContent(values);
         return await Config.RetryPolicy.ExecuteAsync(async () =>
         {
-            HttpResponseMessage response = await _http.PostAsync("https://developer.api.autodesk.com/authentication/v1/authenticate", body);
+            HttpResponseMessage response = await Config.HttpClient.PostAsync("https://developer.api.autodesk.com/authentication/v1/authenticate", body);
             response.EnsureSuccessStatusCode();
             string responseString = await response.Content.ReadAsStringAsync();
             var authResponse = JsonConvert.DeserializeObject<AuthenticateResponse>(responseString);

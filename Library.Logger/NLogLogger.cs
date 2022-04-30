@@ -5,27 +5,29 @@ using NLog.Targets;
 namespace Library.Logger;
 
 public class NLogLogger : ILogger
-{
-    private readonly NLogLoggerConfiguration _config;
-
+{ 
     private NLog.Logger Log { get; set; } = null!;
+    
+    public ILoggerConfiguration Config { get; }
 
     public NLogLogger()
     {
-        _config = new NLogLoggerConfiguration();
+        Config = new NLogLoggerConfiguration();
         ConfigureLogger();
     }
-    public NLogLogger(NLogLoggerConfiguration config)
+    public NLogLogger(ILoggerConfiguration config)
     {
-        _config = config;
+        Config = config;
         ConfigureLogger();
     }
 
     private void ConfigureLogger()
     {
+        NLog.LogLevel logLevel = MapILoggerConfigurationLogLevelToNLogLogLevel(Config);
         var config = new LoggingConfiguration();
+        
 
-        if (_config.LogToConsole)
+        if (Config.LogToConsole)
         {
             var coloredConsoleTarget = new ColoredConsoleTarget("coloredconsole")
             {
@@ -69,11 +71,26 @@ public class NLogLogger : ILogger
                 ForegroundColor = ConsoleOutputColor.DarkGray,
                 BackgroundColor = ConsoleOutputColor.NoChange
             });
-            config.AddRule(minLevel: _config.LogLevel, maxLevel: LogLevel.Fatal, target: coloredConsoleTarget);
+            config.AddRule(minLevel: logLevel, maxLevel: NLog.LogLevel.Fatal, target: coloredConsoleTarget);
         }
         
         LogManager.Configuration = config;
         Log = LogManager.GetCurrentClassLogger();
+    }
+
+    private static NLog.LogLevel MapILoggerConfigurationLogLevelToNLogLogLevel(ILoggerConfiguration config)
+    {
+        return config.LogLevel switch
+        {
+            LogLevel.Off => NLog.LogLevel.Off,
+            LogLevel.Trace => NLog.LogLevel.Trace,
+            LogLevel.Debug => NLog.LogLevel.Debug,
+            LogLevel.Info => NLog.LogLevel.Info,
+            LogLevel.Warn => NLog.LogLevel.Warn,
+            LogLevel.Error => NLog.LogLevel.Error,
+            LogLevel.Fatal => NLog.LogLevel.Fatal,
+            _ => throw new ArgumentOutOfRangeException()
+        };
     }
     
     public virtual void Trace(string message)

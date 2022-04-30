@@ -47,10 +47,9 @@ public class TwoLeggedApiClient :
         return this;
     }
 
-    public ApiClient CreateApiClient()
+    public ApiClient Create()
     {
-        if (_configuration is null)
-            _configuration = new ApiClientConfiguration(_clientId, _clientSecret, _accountId);
+        _configuration ??= new ApiClientConfiguration(_clientId, _clientSecret, _accountId);
         return new ApiClient(_configuration);
     }
 }

@@ -1,6 +1,7 @@
 ﻿using Library.Logger;
 using NLog;
 using ILogger = Library.Logger.ILogger;
+using LogLevel = Library.Logger.LogLevel;
 
 ILogger logger1 = new NLogLogger();
 logger1.Trace("Testing trace");

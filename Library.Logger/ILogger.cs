@@ -2,6 +2,7 @@
 
 public interface ILogger
 {
+    public ILoggerConfiguration Config { get; }
     public void Trace(string message);
     public void Trace(Exception ex, string message);
     public void Debug(string message);

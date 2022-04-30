@@ -18,10 +18,10 @@ public interface IAccountIdSelectionStage
 public interface IOptionalConfigurationStage
 {
     public ICreateApiClientStage WithOptions(Action<ApiClientOptions> options);
-    public ApiClient CreateApiClient();
+    public ApiClient Create();
 }
 
 public interface ICreateApiClientStage
 { 
-    public ApiClient CreateApiClient();
+    public ApiClient Create();
 }

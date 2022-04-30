@@ -2,6 +2,9 @@
 
 namespace AutodeskConstructionCloud.ApiClient.RestApiResponses;
 
+/*
+ * https://forge.autodesk.com/en/docs/oauth/v1/reference/http/authenticate-POST/
+ */
 public class AuthenticateResponse
 {
     [JsonProperty("access_token")]
