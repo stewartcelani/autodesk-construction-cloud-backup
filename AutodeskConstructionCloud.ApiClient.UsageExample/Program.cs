@@ -8,6 +8,44 @@ using Library;
 using NLog;
 using LogLevel = Library.Logger.LogLevel;
 
+
+
+const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
+const string clientSecret = "wE3GFhuIsGJEi3d4";
+const string accountId = "48a4d1eb-a370-42fe-89c9-4dd9e2ad9d41";
+
+ApiClient sut = TwoLeggedApiClient
+    .Configure()
+    .WithClientId(clientId)
+    .AndClientSecret(clientSecret)
+    .ForAccount(accountId)
+    .WithOptions(options =>
+    {
+        options.Logger = new NLogLogger(new NLogLoggerConfiguration()
+        {
+            LogLevel = LogLevel.Trace,
+            LogToConsole = true
+        });
+        options.RetryAttempts = 5;
+        options.InitialRetryInSeconds = 2;
+    })
+    .Create();
+
+// Act
+
+await sut.EnsureAccessToken();
+
+
+
+
+
+
+
+
+
+
+
+/*
 string clientId = SecretsManager.GetEnvironmentVariableOrDefaultTo("acc:clientid", "InvalidClientId");
 string clientSecret = SecretsManager.GetEnvironmentVariableOrDefaultTo("acc:clientsecret", "InvalidClientSecret");
 string accountId = SecretsManager.GetEnvironmentVariableOrDefaultTo("acc:accountid", "InvalidAccountId");
@@ -34,6 +72,7 @@ List<Project> projects = await client.GetProjects();
 
 
 Console.ReadLine();
+*/
 
 
 

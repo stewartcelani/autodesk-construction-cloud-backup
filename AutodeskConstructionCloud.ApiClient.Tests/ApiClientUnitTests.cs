@@ -182,6 +182,7 @@ public class ApiClientUnitTests
             .Should()
             .ThrowAsync<UnauthorizedAccessException>()
             .WithMessage(forbiddenResponse);
+        messageHandler.NumberOfCalls.Should().Be(2);
     }
     
     [Fact]
@@ -194,7 +195,7 @@ public class ApiClientUnitTests
         var messageHandlerMapping = new MockHttpMessageHandlerMapping()
         {
             RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
-            Response = RestApiExampleResponses.AuthenticateResponse,
+            Response = await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
             StatusCode = HttpStatusCode.OK
         };
         var messageHandler = new MockHttpMessageHandler(messageHandlerMapping);
@@ -220,6 +221,7 @@ public class ApiClientUnitTests
         initialAuthHeader.Should().BeNull();
         sut.Config.HttpClient.DefaultRequestHeaders.Authorization.Should().NotBeNull();
         Assert.NotEqual(initialAuthHeader, sut.Config.HttpClient.DefaultRequestHeaders.Authorization);
+        messageHandler.NumberOfCalls.Should().Be(1);
     }
 
     [Fact]
@@ -261,6 +263,7 @@ public class ApiClientUnitTests
             .Should()
             .ThrowAsync<UnauthorizedAccessException>()
             .WithMessage(unauthorizedResponse);
+        messageHandler.NumberOfCalls.Should().Be(2);
     }
 
     [Fact]
@@ -299,6 +302,7 @@ public class ApiClientUnitTests
         await act
             .Should()
             .ThrowAsync<HttpRequestException>();
+        messageHandler.NumberOfCalls.Should().Be(2);
     }
 
     [Fact]
@@ -307,19 +311,19 @@ public class ApiClientUnitTests
         // Arrange
         const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
         const string clientSecret = "wE3GFhuIsGJEi3d4";
-        const string accountId = "0577ff54-1967-4c9b-80d4-eb649bd0774d";
+        const string accountId = "48a4d1eb-a370-42fe-89c9-4dd9e2ad9d41";
         var messageHandlerMappings = new List<MockHttpMessageHandlerMapping>
         {
             new ()
             {
                 RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
-                Response = RestApiExampleResponses.AuthenticateResponse,
+                Response = await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
                 StatusCode = HttpStatusCode.OK
             },
             new ()
             {
                 RequestUri = new Uri($"https://developer.api.autodesk.com/project/v1/hubs/b.{accountId}/projects"),
-                Response = RestApiExampleResponses.ProjectsResponse,
+                Response = await new StreamReader(@"ExampleRestApiResponses\ProjectsResponse.json").ReadToEndAsync(),
                 StatusCode = HttpStatusCode.OK
             }
         };
@@ -344,5 +348,103 @@ public class ApiClientUnitTests
         // Assert
         projects.Count.Should().Be(1);
         messageHandler.NumberOfCalls.Should().Be(2);
+    }
+    
+    [Fact]
+    public async Task GetProjects_InternalServerError_Should_Throw_GenericHttpRequestException()
+    {
+        // Arrange
+        const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
+        const string clientSecret = "wE3GFhuIsGJEi3d4";
+        const string accountId = "48a4d1eb-a370-42fe-89c9-4dd9e2ad9d41";
+        var messageHandlerMappings = new List<MockHttpMessageHandlerMapping>
+        {
+            new ()
+            {
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                Response = await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            },
+            new ()
+            {
+                RequestUri = new Uri($"https://developer.api.autodesk.com/project/v1/hubs/b.{accountId}/projects"),
+                Response = string.Empty,
+                StatusCode = HttpStatusCode.InternalServerError
+            }
+        };
+        var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
+        var httpClient = new HttpClient(messageHandler);
+        ApiClient sut = TwoLeggedApiClient
+            .Configure()
+            .WithClientId(clientId)
+            .AndClientSecret(clientSecret)
+            .ForAccount(accountId)
+            .WithOptions(options =>
+            {
+                options.HttpClient = httpClient;
+                options.RetryAttempts = 1;
+                options.InitialRetryInSeconds = 1;
+            })
+            .Create();
+
+        // Act
+        Func<Task> act = async () => await sut.GetProjects();
+
+        // Assert
+        await act
+            .Should()
+            .ThrowAsync<HttpRequestException>();
+        messageHandler.NumberOfCalls.Should().Be(3);
+    }
+    
+    [Fact]
+    public async Task GetProjects_WithPagination_Should_ReturnTwoProjects()
+    {
+        // Arrange
+        const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
+        const string clientSecret = "wE3GFhuIsGJEi3d4";
+        const string accountId = "48a4d1eb-a370-42fe-89c9-4dd9e2ad9d41";
+        var messageHandlerMappings = new List<MockHttpMessageHandlerMapping>
+        {
+            new ()
+            {
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                Response = await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            },
+            new ()
+            {
+                RequestUri = new Uri($"https://developer.api.autodesk.com/project/v1/hubs/b.{accountId}/projects"),
+                Response = await new StreamReader(@"ExampleRestApiResponses\ProjectsResponseWithPagination.json").ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            },
+            new ()
+            {
+                RequestUri = new Uri($"https://developer.api.autodesk.com/project/v1/hubs/b.{accountId}/projects?page%5Bnumber%5D=2&page%5Blimit%5D=2"),
+                Response = await new StreamReader(@"ExampleRestApiResponses\ProjectsResponse.json").ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            }
+        };
+        var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
+        var httpClient = new HttpClient(messageHandler);
+        ApiClient sut = TwoLeggedApiClient
+            .Configure()
+            .WithClientId(clientId)
+            .AndClientSecret(clientSecret)
+            .ForAccount(accountId)
+            .WithOptions(options =>
+            {
+                options.HttpClient = httpClient;
+                options.RetryAttempts = 1;
+                options.InitialRetryInSeconds = 1;
+            })
+            .Create();
+
+        // Act
+        List<Project> projects = await sut.GetProjects();
+
+        // Assert
+        projects.Count.Should().Be(2);
+        messageHandler.NumberOfCalls.Should().Be(3);
     }
 }

@@ -25,23 +25,25 @@ public class ApiClient : IApiClient
     public async Task<List<Project>> GetProjects()
     {
         Config.Logger?.Trace("Top");
-        await EnsureAccessToken();
-
         var projectsEndpoint = $"https://developer.api.autodesk.com/project/v1/hubs/b.{Config.AccountId}/projects";
         var projectsResponses = new List<ProjectsResponse>();
-        Config.Logger?.Trace("Entering pagination while loop.");
         do
         {
-            HttpResponseMessage response = await Config.RetryPolicy.ExecuteAsync(async () =>
-                await Config.HttpClient.GetAsync(projectsEndpoint));
-            string responseString = await response.Content.ReadAsStringAsync();
-            if (!response.IsSuccessStatusCode)
+            var responseString = string.Empty;
+            await Config.RetryPolicy.ExecuteAsync(async () =>
             {
-                HandleUnsuccessfulStatusCode(
-                    responseString,
-                    response.StatusCode,
-                    "https://forge.autodesk.com/en/docs/data/v2/reference/http/hubs-hub_id-projects-GET/");
-            }
+                Config.Logger?.Trace("Top RetryPolicy, about to call EnsureAccessToken and then projects endpoint.");
+                await EnsureAccessToken();
+                HttpResponseMessage response = await Config.HttpClient.GetAsync(projectsEndpoint);
+                responseString = await response.Content.ReadAsStringAsync();
+                if (!response.IsSuccessStatusCode)
+                {
+                    HandleUnsuccessfulStatusCode(
+                        responseString,
+                        response.StatusCode,
+                        "https://forge.autodesk.com/en/docs/data/v2/reference/http/hubs-hub_id-projects-GET/");
+                }
+            });
             var projectsResponse = JsonConvert.DeserializeObject<ProjectsResponse>(responseString);
             projectsResponses.Add(projectsResponse);
             if (projectsResponse.Links?.Next?.Href is not null)
@@ -50,7 +52,6 @@ public class ApiClient : IApiClient
             }
             else
             {
-                Config.Logger?.Trace("No more pagination needed. Breaking.");
                 break;
             }
         } while (true);
@@ -92,18 +93,21 @@ public class ApiClient : IApiClient
             { "scope", "account:read account:write data:read" }
         };
         var body = new FormUrlEncodedContent(values);
-        const string authenticateEndpoint = "https://developer.api.autodesk.com/authentication/v1/authenticate";
-        HttpResponseMessage response = await Config.RetryPolicy.ExecuteAsync(async () =>
-            await Config.HttpClient.PostAsync(authenticateEndpoint, body));
-        string responseString = await response.Content.ReadAsStringAsync();
-        if (!response.IsSuccessStatusCode)
+        var responseString = string.Empty;
+        await Config.RetryPolicy.ExecuteAsync(async () =>
         {
-            HandleUnsuccessfulStatusCode(
-                responseString,
-                response.StatusCode,
-                "https://forge.autodesk.com/en/docs/oauth/v1/reference/http/authenticate-POST/");
-        }
-
+            Config.Logger?.Trace("Top RetryPolicy, about to call authenticate endpoint.");
+            const string authenticateEndpoint = "https://developer.api.autodesk.com/authentication/v1/authenticate";
+            HttpResponseMessage response = await Config.HttpClient.PostAsync(authenticateEndpoint, body);
+            responseString = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode)
+            {
+                HandleUnsuccessfulStatusCode(
+                    responseString,
+                    response.StatusCode,
+                    "https://forge.autodesk.com/en/docs/oauth/v1/reference/http/authenticate-POST/");
+            }
+        });
         var authResponse = JsonConvert.DeserializeObject<AuthenticateResponse>(responseString);
         string accessToken = authResponse.AccessToken;
         int expiresIn = authResponse.ExpiresIn;
@@ -119,19 +123,19 @@ public class ApiClient : IApiClient
         Config.Logger?.Trace("Top");
         if (statusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
         {
+            _accessTokenExpiresAt = DateTime.Now.Subtract(TimeSpan.FromMinutes(1)); // Will force the next EnsureAccessToken to call GetAccessToken();
             var unauthorizedAccessException = new UnauthorizedAccessException(responseString);
-            Config.Logger?.Fatal(unauthorizedAccessException,
-                $"Fatal {(int)statusCode} error getting two-legged access token from Autodesk API. " +
-                "This usually indicates an incorrect clientId and/or clientSecret. All retries exceeded. " +
+            Config.Logger?.Error(unauthorizedAccessException,
+                $"Error {(int)statusCode} error getting two-legged access token from Autodesk API. " +
+                "This usually indicates an incorrect clientId and/or clientSecret. " +
                 $"See {moreDetailsUrl} for more details.");
             throw unauthorizedAccessException;
         }
-
         var httpRequestException = new HttpRequestException(responseString);
-        Config.Logger?.Fatal(httpRequestException,
-            $"Fatal {(int)statusCode} error communicating with Autodesk API. " +
-            "All retries exceeded. " +
+        Config.Logger?.Error(httpRequestException,
+            $"Error {(int)statusCode} error communicating with Autodesk API. " +
             $"See {moreDetailsUrl} for more details.");
         throw httpRequestException;
     }
+    
 }

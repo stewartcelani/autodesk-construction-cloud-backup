@@ -19,18 +19,18 @@ public class ApiClientConfiguration : ApiClientOptions
         RetryPolicy = GetRetryPolicy(RetryAttempts, InitialRetryInSeconds);
     }
 
-    public AsyncRetryPolicy GetRetryPolicy(int retryAttempts, int initialRetryDelayInSeconds)
+    public AsyncRetryPolicy GetRetryPolicy(int maxRetryAttempts, int initialRetryDelayInSeconds)
     {
         return Policy
             .Handle<Exception>()
             .WaitAndRetryAsync(
-                retryCount: retryAttempts,
+                retryCount: maxRetryAttempts,
                 sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(retryAttempt * initialRetryDelayInSeconds),
-                onRetry: (exception, sleepDuration, retryAttempt, context) =>
+                onRetry: (exception, sleepDuration, retryCount, context) =>
                 {
                     string message = "Error communicating with Autodesk API. " +
                                      "Expecting this to be a transient error. " +
-                                     $"Retry {retryAttempt}/{retryAttempts} in {sleepDuration.Seconds} seconds.";
+                                     $"Retry {retryCount}/{maxRetryAttempts} in {sleepDuration.Seconds} seconds.";
                     Logger?.Warn(exception, message);
                 });
     }
