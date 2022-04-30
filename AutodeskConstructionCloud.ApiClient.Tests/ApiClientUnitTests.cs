@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using AutodeskConstructionCloud.ApiClient.Entities;
 using Xunit;
@@ -151,7 +152,13 @@ public class ApiClientUnitTests
         const string accountId = "f33e018a-d1f5-4ef3-ae67-606de6aeed87";
         const string forbiddenResponse =
             $@"{{ ""developerMessage"":""The client_id specified does not have access to the api product"", ""moreInfo"": ""https://forge.autodesk.com/en/docs/oauth/v2/developers_guide/error_handling/"", ""errorCode"": ""AUTH-001""}}";
-        var messageHandler = new MockHttpMessageHandler(forbiddenResponse, HttpStatusCode.Forbidden);
+        var messageHandlerMapping = new MockHttpMessageHandlerMapping()
+        {
+            RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+            Response = forbiddenResponse,
+            StatusCode = HttpStatusCode.Forbidden
+        };
+        var messageHandler = new MockHttpMessageHandler(messageHandlerMapping);
         var httpClient = new HttpClient(messageHandler);
 
         ApiClient sut = TwoLeggedApiClient
@@ -176,6 +183,44 @@ public class ApiClientUnitTests
             .ThrowAsync<UnauthorizedAccessException>()
             .WithMessage(forbiddenResponse);
     }
+    
+    [Fact]
+    public async Task EnsureAccessToken_WithValidCredentials_Should_SetHttpAuthenticationHeader()
+    {
+        // Arrange
+        const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
+        const string clientSecret = "wE3GFhuIsGJEi3d4";
+        const string accountId = "f33e018a-d1f5-4ef3-ae67-606de6aeed87";
+        var messageHandlerMapping = new MockHttpMessageHandlerMapping()
+        {
+            RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+            Response = RestApiExampleResponses.AuthenticateResponse,
+            StatusCode = HttpStatusCode.OK
+        };
+        var messageHandler = new MockHttpMessageHandler(messageHandlerMapping);
+        var httpClient = new HttpClient(messageHandler);
+        ApiClient sut = TwoLeggedApiClient
+            .Configure()
+            .WithClientId(clientId)
+            .AndClientSecret(clientSecret)
+            .ForAccount(accountId)
+            .WithOptions(options =>
+            {
+                options.HttpClient = httpClient;
+                options.RetryAttempts = 1;
+                options.InitialRetryInSeconds = 1;
+            })
+            .Create();
+        AuthenticationHeaderValue? initialAuthHeader = sut.Config.HttpClient.DefaultRequestHeaders.Authorization;
+
+        // Act
+        await sut.EnsureAccessToken();
+        
+        // Assert
+        initialAuthHeader.Should().BeNull();
+        sut.Config.HttpClient.DefaultRequestHeaders.Authorization.Should().NotBeNull();
+        Assert.NotEqual(initialAuthHeader, sut.Config.HttpClient.DefaultRequestHeaders.Authorization);
+    }
 
     [Fact]
     public async Task GetAccessToken_InvalidClientSecret_Should_Throw_401Unauthorized()
@@ -186,7 +231,13 @@ public class ApiClientUnitTests
         const string accountId = "f33e018a-d1f5-4ef3-ae67-606de6aeed87";
         const string unauthorizedResponse =
             $@"{{""developerMessage"":""The client_id (application key)/client_secret are not valid"",""errorCode"":""AUTH-003"",""more info"":""https://forge.autodesk.com/en/docs/oauth/v2/developers_guide/error_handling/""}}";
-        var messageHandler = new MockHttpMessageHandler(unauthorizedResponse, HttpStatusCode.Unauthorized);
+        var messageHandlerMapping = new MockHttpMessageHandlerMapping()
+        {
+            RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+            Response = unauthorizedResponse,
+            StatusCode = HttpStatusCode.Unauthorized
+        };
+        var messageHandler = new MockHttpMessageHandler(messageHandlerMapping);
         var httpClient = new HttpClient(messageHandler);
 
         ApiClient sut = TwoLeggedApiClient
@@ -219,7 +270,13 @@ public class ApiClientUnitTests
         const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
         const string clientSecret = "InvalidClientSecret";
         const string accountId = "f33e018a-d1f5-4ef3-ae67-606de6aeed87";
-        var messageHandler = new MockHttpMessageHandler(string.Empty, HttpStatusCode.InternalServerError);
+        var messageHandlerMapping = new MockHttpMessageHandlerMapping()
+        {
+            RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+            Response = string.Empty,
+            StatusCode = HttpStatusCode.InternalServerError
+        };
+        var messageHandler = new MockHttpMessageHandler(messageHandlerMapping);
         var httpClient = new HttpClient(messageHandler);
 
         ApiClient sut = TwoLeggedApiClient
@@ -251,7 +308,22 @@ public class ApiClientUnitTests
         const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
         const string clientSecret = "wE3GFhuIsGJEi3d4";
         const string accountId = "0577ff54-1967-4c9b-80d4-eb649bd0774d";
-        var messageHandler = new MockHttpMessageHandler(RestApiExampleResponses.ProjectsResponse, HttpStatusCode.OK);
+        var messageHandlerMappings = new List<MockHttpMessageHandlerMapping>
+        {
+            new ()
+            {
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                Response = RestApiExampleResponses.AuthenticateResponse,
+                StatusCode = HttpStatusCode.OK
+            },
+            new ()
+            {
+                RequestUri = new Uri($"https://developer.api.autodesk.com/project/v1/hubs/b.{accountId}/projects"),
+                Response = RestApiExampleResponses.ProjectsResponse,
+                StatusCode = HttpStatusCode.OK
+            }
+        };
+        var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
         var httpClient = new HttpClient(messageHandler);
         ApiClient sut = TwoLeggedApiClient
             .Configure()
@@ -271,5 +343,6 @@ public class ApiClientUnitTests
 
         // Assert
         projects.Count.Should().Be(1);
+        messageHandler.NumberOfCalls.Should().Be(2);
     }
 }
