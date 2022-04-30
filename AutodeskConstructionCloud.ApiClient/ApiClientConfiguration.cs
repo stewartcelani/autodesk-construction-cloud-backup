@@ -23,23 +23,15 @@ public class ApiClientConfiguration : ApiClientOptions
     {
         return Policy
             .Handle<Exception>()
-            .Or<HttpRequestException>()
             .WaitAndRetryAsync(
                 retryCount: retryAttempts,
                 sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(retryAttempt * initialRetryDelayInSeconds),
                 onRetry: (exception, sleepDuration, retryAttempt, context) =>
                 {
-                    int attemptsRemaining = retryAttempts - retryAttempt;
-                    string message = $"Error communicating with Autodesk API. " +
+                    string message = "Error communicating with Autodesk API. " +
+                                     "Expecting this to be a transient error. " +
                                      $"Retry {retryAttempt}/{retryAttempts} in {sleepDuration.Seconds} seconds.";
-                    if (attemptsRemaining == 0)
-                    {
-                        Logger?.Error(exception, message);
-                    }
-                    else
-                    {
-                        Logger?.Warn(exception, message);
-                    }
+                    Logger?.Warn(exception, message);
                 });
     }
 }

@@ -23,7 +23,7 @@ public class NLogLogger : ILogger
 
     private void ConfigureLogger()
     {
-        NLog.LogLevel logLevel = MapILoggerConfigurationLogLevelToNLogLogLevel(Config);
+        NLog.LogLevel logLevel = MapILoggerConfigurationLogLevelToNLogLogLevel(Config.LogLevel);
         var config = new LoggingConfiguration();
         
 
@@ -78,11 +78,12 @@ public class NLogLogger : ILogger
         Log = LogManager.GetCurrentClassLogger();
     }
 
-    private static NLog.LogLevel MapILoggerConfigurationLogLevelToNLogLogLevel(ILoggerConfiguration config)
+    private static NLog.LogLevel MapILoggerConfigurationLogLevelToNLogLogLevel(LogLevel logLevel)
     {
-        return config.LogLevel switch
+        return logLevel switch
         {
             LogLevel.Off => NLog.LogLevel.Off,
+            LogLevel.Silly => throw new ArgumentOutOfRangeException(),
             LogLevel.Trace => NLog.LogLevel.Trace,
             LogLevel.Debug => NLog.LogLevel.Debug,
             LogLevel.Info => NLog.LogLevel.Info,

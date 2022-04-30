@@ -1,5 +1,8 @@
-﻿using Newtonsoft.Json;
+﻿using System.Net;
+using Newtonsoft.Json;
 using AutodeskConstructionCloud.ApiClient.RestApiResponses;
+using NLog;
+using Polly.Retry;
 
 namespace AutodeskConstructionCloud.ApiClient;
 
@@ -21,7 +24,7 @@ public class ApiClient : IApiClient
         await EnsureAccessToken();
     }
 
-    public async Task EnsureAccessToken()
+    private async Task EnsureAccessToken()
     {
         Config.Logger?.Trace("Top");
         if (_accessTokenExpiresAt is null || _accessTokenExpiresAt < DateTime.Now)
@@ -46,8 +49,11 @@ public class ApiClient : IApiClient
         return await Config.RetryPolicy.ExecuteAsync(async () =>
         {
             HttpResponseMessage response = await Config.HttpClient.PostAsync("https://developer.api.autodesk.com/authentication/v1/authenticate", body);
-            response.EnsureSuccessStatusCode();
             string responseString = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode)
+            {
+                HandleUnsuccessfulStatusCode(responseString, response.StatusCode);
+            }
             var authResponse = JsonConvert.DeserializeObject<AuthenticateResponse>(responseString);
             string accessToken = authResponse.AccessToken;
             int expiresIn = authResponse.ExpiresIn;
@@ -56,5 +62,25 @@ public class ApiClient : IApiClient
             Config.Logger?.Debug($"Return with accessToken: {accessToken}, accessTokenExpiresAt: {accessTokenExpiresAt}");
             return (accessToken, accessTokenExpiresAt);
         });
+    }
+
+    private void HandleUnsuccessfulStatusCode(string responseString, HttpStatusCode statusCode)
+    {
+        if (statusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+        {
+            var unauthorizedAccessException = new UnauthorizedAccessException(responseString);
+            Config.Logger?.Fatal(unauthorizedAccessException,
+                $"Fatal {(int)statusCode} error getting two-legged access token from Autodesk API. " +
+                "This usually indicates an incorrect clientId and/or clientSecret. All retries exceeded." +
+                "See https://forge.autodesk.com/en/docs/oauth/v1/reference/http/authenticate-POST/ for more details.");
+            throw unauthorizedAccessException;
+        }
+        
+        var httpRequestException = new HttpRequestException(responseString);
+        Config.Logger?.Fatal(httpRequestException,
+            $"Fatal {(int)statusCode} error getting two-legged access token from Autodesk API. " +
+            "All retries exceeded." +
+            "See https://forge.autodesk.com/en/docs/oauth/v1/reference/http/authenticate-POST/ for more details.");
+        throw httpRequestException;
     }
 }

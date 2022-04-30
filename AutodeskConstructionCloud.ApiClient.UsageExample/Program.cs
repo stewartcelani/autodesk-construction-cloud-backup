@@ -1,13 +1,55 @@
-﻿using AutodeskConstructionCloud.ApiClient;
+﻿using System.Net;
+using AutodeskConstructionCloud.ApiClient;
+using AutodeskConstructionCloud.ApiClient.Tests;
 using Library.Logger;
 using NLog;
 
-var http = new HttpClient();
-Console.WriteLine(http.BaseAddress);
+/*
+const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
+const string clientSecret = "wE3GFhuIsGJEi3d4";
+const string accountId = "f33e018a-d1f5-4ef3-ae67-606de6aeed87";
+ApiClient sut = TwoLeggedApiClient
+    .Configure()
+    .WithClientId(clientId)
+    .AndClientSecret(clientSecret)
+    .ForAccount(accountId)
+    .WithOptions(options =>
+    {
+        options.Logger = new NLogLogger();
+        options.RetryAttempts = 2;
+        options.InitialRetryInSeconds = 15;
+    })
+    .Create();
 
-var http2 = new HttpClient();
-http2.BaseAddress = new Uri("https://www.test.com");
-Console.WriteLine(http2.BaseAddress);
+await sut.GetAllProjects();
+Console.WriteLine("End");
+*/
+
+// Arrange
+const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
+const string clientSecret = "wE3GFhuIsGJEi3d4";
+const string accountId = "f33e018a-d1f5-4ef3-ae67-606de6aeed87";
+const string unauthorizedResponse = 
+    $@"{{ ""developerMessage"":""The client_id specified does not have access to the api product"", ""moreInfo"": ""https://forge.autodesk.com/en/docs/oauth/v2/developers_guide/error_handling/"", ""errorCode"": ""AUTH-001""}}";
+var messageHandler = new MockHttpMessageHandler(unauthorizedResponse, HttpStatusCode.Forbidden);
+var httpClient = new HttpClient(messageHandler);
+        
+ApiClient sut = TwoLeggedApiClient
+    .Configure()
+    .WithClientId(clientId)
+    .AndClientSecret(clientSecret)
+    .ForAccount(accountId)
+    .WithOptions(options =>
+    {
+        options.RetryAttempts = 1;
+        options.InitialRetryInSeconds = 2;
+        options.HttpClient = httpClient;
+    })
+    .Create();
+
+await sut.GetAllProjects();
+
+
 
 /*
 ApiClient api1 = TwoLeggedApiClient

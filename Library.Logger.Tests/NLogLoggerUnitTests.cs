@@ -1,24 +1,28 @@
 using System;
+using Castle.Core.Logging;
 using Xunit;
 using FluentAssertions;
 using NSubstitute;
 
 namespace Library.Logger.Tests;
 
-public class NLogLoggerTests
+public class NLogLoggerUnitTests
 {
-    private readonly ILogger _sut;
-    
+    private readonly ILogger _sutMock;
+    private readonly ILogger _sut; // workaround for Rider coverage not picking up test for logging methods with mock
+
     private const LogLevel DefaultLogLevel = LogLevel.Info;
     private const bool DefaultLogToConsole = true;
     
-    public NLogLoggerTests()
+    public NLogLoggerUnitTests()
     {
-        _sut = Substitute.For<NLogLogger>(new NLogLoggerConfiguration()
+        var config = new NLogLoggerConfiguration()
         {
             LogLevel = LogLevel.Trace,
             LogToConsole = true
-        });
+        };
+        _sutMock = Substitute.For<NLogLogger>(config);
+        _sut = new NLogLogger(config);
     }
     
     [Fact]
@@ -67,21 +71,103 @@ public class NLogLoggerTests
     }
     
     [Fact]
+    public void Invoking_ILogLevel_Should_BeProperlyMappedToNLogLogLevel()
+    {
+        // Arrange
+        var guid = Guid.NewGuid();
+        string message = $"Test:{guid}";
+        const bool logToConsole = true;
+        
+        // Act
+        ILogger off = new NLogLogger(new NLogLoggerConfiguration()
+        {
+            LogLevel = LogLevel.Off,
+            LogToConsole = logToConsole
+        });
+        ILogger trace = new NLogLogger(new NLogLoggerConfiguration()
+        {
+            LogLevel = LogLevel.Trace,
+            LogToConsole = logToConsole
+        });
+        ILogger debug = new NLogLogger(new NLogLoggerConfiguration()
+        {
+            LogLevel = LogLevel.Debug,
+            LogToConsole = logToConsole
+        });
+        ILogger info = new NLogLogger(new NLogLoggerConfiguration()
+        {
+            LogLevel = LogLevel.Info,
+            LogToConsole = logToConsole
+        });
+        ILogger warn = new NLogLogger(new NLogLoggerConfiguration()
+        {
+            LogLevel = LogLevel.Warn,
+            LogToConsole = logToConsole
+        });
+        ILogger error = new NLogLogger(new NLogLoggerConfiguration()
+        {
+            LogLevel = LogLevel.Error,
+            LogToConsole = logToConsole
+        });
+        ILogger fatal = new NLogLogger(new NLogLoggerConfiguration()
+        {
+            LogLevel = LogLevel.Fatal,
+            LogToConsole = logToConsole
+        });
+        Action act = () =>
+        {
+            off.Trace(message);
+            trace.Trace(message);
+            debug.Debug(message);
+            info.Info(message);
+            warn.Warn(message);
+            error.Error(message);
+            fatal.Fatal(message);
+        };
+
+        // Assert   
+        act.Should().NotThrow();
+    }
+    
+    [Fact]
+    public void Invoking_ILogLevel_Should_ThrowIfNotSupportedByNLog()
+    {
+        // Arrange
+        ILogger sut;
+        
+        // Act
+        Action invoking = () =>
+        {
+            sut = new NLogLogger(new NLogLoggerConfiguration()
+            {
+                LogLevel = LogLevel.Silly,
+                LogToConsole = true
+            });
+        };
+
+        // Assert   
+        invoking.Should().Throw<ArgumentOutOfRangeException>();
+    }
+    
+    [Fact]
     public void Trace_Should_LogAppropriateMessage()
     {
         // Arrange
         var guid = Guid.NewGuid();
         string message = $"Test:{guid}";
 
+
         // Act
         Action act = () =>
         {
             _sut.Trace(message);
+            _sutMock.Trace(message);
         };
+
         
         // Assert
         act.Should().NotThrow();
-        _sut.Received(1).Trace(message);
+        _sutMock.Received(1).Trace(message);
     }
 
     [Fact]
@@ -96,11 +182,12 @@ public class NLogLoggerTests
         Action act = () =>
         {
             _sut.Trace(ex, message);
+            _sutMock.Trace(ex, message);
         };
         
         // Assert
         act.Should().NotThrow();
-        _sut.Received(1).Trace(ex, message);
+        _sutMock.Received(1).Trace(ex, message);
     }
     
     [Fact]
@@ -114,11 +201,12 @@ public class NLogLoggerTests
         Action act = () =>
         {
             _sut.Debug(message);
+            _sutMock.Debug(message);
         };
         
         // Assert
         act.Should().NotThrow();
-        _sut.Received(1).Debug(message);
+        _sutMock.Received(1).Debug(message);
     }
     
     [Fact]
@@ -133,11 +221,12 @@ public class NLogLoggerTests
         Action act = () =>
         {
             _sut.Debug(ex, message);
+            _sutMock.Debug(ex, message);
         };
         
         // Assert
         act.Should().NotThrow();
-        _sut.Received(1).Debug(ex, message);
+        _sutMock.Received(1).Debug(ex, message);
     }
     
     [Fact]
@@ -151,11 +240,12 @@ public class NLogLoggerTests
         Action act = () =>
         {
             _sut.Info(message);
+            _sutMock.Info(message);
         };
         
         // Assert
         act.Should().NotThrow();
-        _sut.Received(1).Info(message);
+        _sutMock.Received(1).Info(message);
     }
     
     [Fact]
@@ -170,11 +260,12 @@ public class NLogLoggerTests
         Action act = () =>
         {
             _sut.Info(ex, message);
+            _sutMock.Info(ex, message);
         };
         
         // Assert
         act.Should().NotThrow();
-        _sut.Received(1).Info(ex, message);
+        _sutMock.Received(1).Info(ex, message);
     }
     
     [Fact]
@@ -188,11 +279,12 @@ public class NLogLoggerTests
         Action act = () =>
         {
             _sut.Warn(message);
+            _sutMock.Warn(message);
         };
         
         // Assert
         act.Should().NotThrow();
-        _sut.Received(1).Warn(message);
+        _sutMock.Received(1).Warn(message);
     }
     
     [Fact]
@@ -207,11 +299,12 @@ public class NLogLoggerTests
         Action act = () =>
         {
             _sut.Warn(ex, message);
+            _sutMock.Warn(ex, message);
         };
         
         // Assert
         act.Should().NotThrow();
-        _sut.Received(1).Warn(ex, message);
+        _sutMock.Received(1).Warn(ex, message);
     }
     
     [Fact]
@@ -225,11 +318,12 @@ public class NLogLoggerTests
         Action act = () =>
         {
             _sut.Error(message);
+            _sutMock.Error(message);
         };
         
         // Assert
         act.Should().NotThrow();
-        _sut.Received(1).Error(message);
+        _sutMock.Received(1).Error(message);
     }
     
     [Fact]
@@ -244,11 +338,12 @@ public class NLogLoggerTests
         Action act = () =>
         {
             _sut.Error(ex, message);
+            _sutMock.Error(ex, message);
         };
         
         // Assert
         act.Should().NotThrow();
-        _sut.Received(1).Error(ex, message);
+        _sutMock.Received(1).Error(ex, message);
     }
     
     [Fact]
@@ -262,11 +357,12 @@ public class NLogLoggerTests
         Action act = () =>
         {
             _sut.Fatal(message);
+            _sutMock.Fatal(message);
         };
         
         // Assert
         act.Should().NotThrow();
-        _sut.Received(1).Fatal(message);
+        _sutMock.Received(1).Fatal(message);
     }
     
     [Fact]
@@ -281,10 +377,11 @@ public class NLogLoggerTests
         Action act = () =>
         {
             _sut.Fatal(ex, message);
+            _sutMock.Fatal(ex, message);
         };
         
         // Assert
         act.Should().NotThrow();
-        _sut.Received(1).Fatal(ex, message);
+        _sutMock.Received(1).Fatal(ex, message);
     }
 }

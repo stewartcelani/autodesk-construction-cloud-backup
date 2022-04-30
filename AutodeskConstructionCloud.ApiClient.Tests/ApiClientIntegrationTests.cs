@@ -1,17 +1,21 @@
-using System;
+﻿using System;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Xml.Serialization;
 using Xunit;
 using FluentAssertions;
 using Library.Logger;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
+// ReSharper disable AsyncVoidLambda
+
 
 namespace AutodeskConstructionCloud.ApiClient.Tests;
 
-public class ApiClientTests
+public class ApiClientIntegrationTests
 {
-    [Fact]
+     [Fact]
     public void Building_WithoutOptions_Should_HaveAppropriateValues()
     {
         // Arrange
@@ -137,5 +141,37 @@ public class ApiClientTests
         // Assert
         act.Should().NotThrow();
     }
+
+    [Fact]
+    public async Task GetAccessToken_InvalidClient_Should_Throw_403Forbidden()
+    {
+        // Arrange
+        const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
+        const string clientSecret = "wE3GFhuIsGJEi3d4";
+        const string accountId = "f33e018a-d1f5-4ef3-ae67-606de6aeed87";
+        const string forbiddenResponse = 
+            $@"{{ ""developerMessage"":""The client_id specified does not have access to the api product"", ""moreInfo"": ""https://forge.autodesk.com/en/docs/oauth/v2/developers_guide/error_handling/"", ""errorCode"": ""AUTH-001""}}";
+        ApiClient sut = TwoLeggedApiClient
+            .Configure()
+            .WithClientId(clientId)
+            .AndClientSecret(clientSecret)
+            .ForAccount(accountId)
+            .WithOptions(options =>
+            {
+                options.RetryAttempts = 1;
+                options.InitialRetryInSeconds = 2;
+            })
+            .Create();
+
+        // Act
+        Func<Task> act = async() => await sut.GetAllProjects();
+        
+        // Assert
+        await act
+            .Should()
+            .ThrowAsync<UnauthorizedAccessException>()
+            .WithMessage(forbiddenResponse);
+    }
     
+   
 }

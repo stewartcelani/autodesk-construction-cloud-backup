@@ -8,7 +8,7 @@ using Library.Logger;
 
 namespace Library.FileDownloader.Tests;
 
-public class FileDownloaderTests
+public class FileDownloaderIntegrationTests
 {
     private readonly FileDownloader _sut;
     private readonly FileDownloaderFile _file = new()
@@ -18,7 +18,7 @@ public class FileDownloaderTests
     };
     private readonly List<FileDownloaderFile> _fileList = new();
 
-    public FileDownloaderTests()
+    public FileDownloaderIntegrationTests()
     {
         _sut = new FileDownloader();
         

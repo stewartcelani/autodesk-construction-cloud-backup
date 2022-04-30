@@ -8,6 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\AutodeskConstructionCloud.ApiClient.Tests\AutodeskConstructionCloud.ApiClient.Tests.csproj" />
       <ProjectReference Include="..\AutodeskConstructionCloud.ApiClient\AutodeskConstructionCloud.ApiClient.csproj" />
     </ItemGroup>
 
