@@ -1,53 +1,43 @@
 ﻿using System.Net;
+using System.Net.Http.Headers;
 using AutodeskConstructionCloud.ApiClient;
+using AutodeskConstructionCloud.ApiClient.Entities;
 using AutodeskConstructionCloud.ApiClient.Tests;
 using Library.Logger;
+using Library;
 using NLog;
+using LogLevel = Library.Logger.LogLevel;
 
-/*
-const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
-const string clientSecret = "wE3GFhuIsGJEi3d4";
-const string accountId = "f33e018a-d1f5-4ef3-ae67-606de6aeed87";
-ApiClient sut = TwoLeggedApiClient
+string clientId = SecretsManager.GetEnvironmentVariableOrDefaultTo("acc:clientid", "InvalidClientId");
+string clientSecret = SecretsManager.GetEnvironmentVariableOrDefaultTo("acc:clientsecret", "InvalidClientSecret");
+string accountId = SecretsManager.GetEnvironmentVariableOrDefaultTo("acc:accountid", "InvalidAccountId");
+
+ApiClient client = TwoLeggedApiClient
     .Configure()
     .WithClientId(clientId)
     .AndClientSecret(clientSecret)
     .ForAccount(accountId)
     .WithOptions(options =>
     {
-        options.Logger = new NLogLogger();
-        options.RetryAttempts = 2;
-        options.InitialRetryInSeconds = 15;
-    })
-    .Create();
-
-await sut.GetAllProjects();
-Console.WriteLine("End");
-*/
-
-// Arrange
-const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
-const string clientSecret = "wE3GFhuIsGJEi3d4";
-const string accountId = "f33e018a-d1f5-4ef3-ae67-606de6aeed87";
-const string unauthorizedResponse = 
-    $@"{{ ""developerMessage"":""The client_id specified does not have access to the api product"", ""moreInfo"": ""https://forge.autodesk.com/en/docs/oauth/v2/developers_guide/error_handling/"", ""errorCode"": ""AUTH-001""}}";
-var messageHandler = new MockHttpMessageHandler(unauthorizedResponse, HttpStatusCode.Forbidden);
-var httpClient = new HttpClient(messageHandler);
-        
-ApiClient sut = TwoLeggedApiClient
-    .Configure()
-    .WithClientId(clientId)
-    .AndClientSecret(clientSecret)
-    .ForAccount(accountId)
-    .WithOptions(options =>
-    {
+        options.Logger = new NLogLogger(new NLogLoggerConfiguration()
+        {
+            LogLevel = LogLevel.Trace,
+            LogToConsole = true
+        });
         options.RetryAttempts = 1;
         options.InitialRetryInSeconds = 2;
-        options.HttpClient = httpClient;
     })
     .Create();
 
-await sut.GetAllProjects();
+List<Project> projects = await client.GetProjects();
+
+Console.ReadLine();
+
+
+
+
+
+
 
 
 

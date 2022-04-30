@@ -37,14 +37,14 @@ public class FileDownloaderIntegrationTests
     }
 
     [Fact]
-    public async Task DownloadAsync()
+    public async Task DownloadAsync_Should_DownloadFileSuccessfully()
     {
         FileInfo file = await _sut.DownloadAsync(_file.DownloadUrl, _file.DownloadPath);
         file.Exists.Should().BeTrue();
     }
 
     [Fact]
-    public async Task DownloadAsyncWithCustomFileDownloaderConfiguration()
+    public async Task DownloadAsync_WithCustomFileDownloaderConfiguration_Should_DownloadFileSuccessfully()
     {
         var config = new FileDownloaderConfiguration(
             6, 
@@ -57,14 +57,14 @@ public class FileDownloaderIntegrationTests
     }
 
     [Fact]
-    public async Task DownloadAsyncOverload()
+    public async Task DownloadAsync_Overload_Should_DownloadFileSuccessfully()
     {
         FileInfo file = await _sut.DownloadAsync(_file);
         file.Exists.Should().BeTrue();
     }
 
     [Fact]
-    public async Task DownloadParallelAsync()
+    public async Task DownloadParallelAsync_Should_DownloadTwentyFilesSuccessfully()
     {
         List<FileInfo> files = await _sut.DownloadParallelAsync(_fileList);
         files.Count.Should().Be(20);

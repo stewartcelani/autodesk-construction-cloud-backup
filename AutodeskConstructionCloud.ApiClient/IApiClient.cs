@@ -1,6 +1,9 @@
-﻿namespace AutodeskConstructionCloud.ApiClient;
+﻿using AutodeskConstructionCloud.ApiClient.Entities;
+
+namespace AutodeskConstructionCloud.ApiClient;
 
 public interface IApiClient
 {
-    public Task GetAllProjects(string[] projectsToExclude, string[] projectsToInclude);
+    public Task EnsureAccessToken();
+    public Task<List<Project>> GetProjects();
 }

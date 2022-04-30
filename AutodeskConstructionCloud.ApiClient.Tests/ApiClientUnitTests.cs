@@ -1,13 +1,14 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
-using System.Xml.Serialization;
+using AutodeskConstructionCloud.ApiClient.Entities;
 using Xunit;
 using FluentAssertions;
 using Library.Logger;
-using NSubstitute;
-using NSubstitute.ExceptionExtensions;
+
 // ReSharper disable AsyncVoidLambda
 
 namespace AutodeskConstructionCloud.ApiClient.Tests;
@@ -21,7 +22,7 @@ public class ApiClientUnitTests
         const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
         const string clientSecret = "wE3GFhuIsGJEi3d4";
         const string accountId = "f33e018a-d1f5-4ef3-ae67-606de6aeed87";
-        
+
         // Act
         ApiClient sut = TwoLeggedApiClient
             .Configure()
@@ -41,7 +42,7 @@ public class ApiClientUnitTests
         sut.Config.HttpClient.BaseAddress.Should().BeNull();
         sut.Config.Logger.Should().BeNull();
     }
-    
+
     [Fact]
     public void Building_WithoutOptions_Should_NotThrow()
     {
@@ -49,7 +50,7 @@ public class ApiClientUnitTests
         const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
         const string clientSecret = "wE3GFhuIsGJEi3d4";
         const string accountId = "f33e018a-d1f5-4ef3-ae67-606de6aeed87";
-        
+
         // Act
         Action act = () => TwoLeggedApiClient
             .Configure()
@@ -61,7 +62,7 @@ public class ApiClientUnitTests
         // Assert
         act.Should().NotThrow();
     }
-    
+
     [Fact]
     public void Building_WithOptions_Should_HaveAppropriateValues()
     {
@@ -75,9 +76,9 @@ public class ApiClientUnitTests
             LogToConsole = false
         });
         var httpClient = new HttpClient();
-        var baseAddress =  new Uri("https://www.test.com");
+        var baseAddress = new Uri("https://www.test.com");
         httpClient.BaseAddress = baseAddress;
-        
+
         // Act
         ApiClient sut = TwoLeggedApiClient
             .Configure()
@@ -105,7 +106,7 @@ public class ApiClientUnitTests
         sut.Config.RetryAttempts.Should().Be(20);
         sut.Config.InitialRetryInSeconds.Should().Be(8);
     }
-    
+
     [Fact]
     public void Building_WithOptions_Should_NotThrow()
     {
@@ -119,9 +120,9 @@ public class ApiClientUnitTests
             LogToConsole = false
         });
         var httpClient = new HttpClient();
-        var baseAddress =  new Uri("https://www.test.com");
+        var baseAddress = new Uri("https://www.test.com");
         httpClient.BaseAddress = baseAddress;
-        
+
         // Act
         Action act = () => TwoLeggedApiClient
             .Configure()
@@ -140,7 +141,7 @@ public class ApiClientUnitTests
         // Assert
         act.Should().NotThrow();
     }
-    
+
     [Fact]
     public async Task GetAccessToken_InvalidClientId_Should_Throw_403Forbidden()
     {
@@ -148,11 +149,11 @@ public class ApiClientUnitTests
         const string clientId = "InvalidClientId";
         const string clientSecret = "wE3GFhuIsGJEi3d4";
         const string accountId = "f33e018a-d1f5-4ef3-ae67-606de6aeed87";
-        const string forbiddenResponse = 
+        const string forbiddenResponse =
             $@"{{ ""developerMessage"":""The client_id specified does not have access to the api product"", ""moreInfo"": ""https://forge.autodesk.com/en/docs/oauth/v2/developers_guide/error_handling/"", ""errorCode"": ""AUTH-001""}}";
         var messageHandler = new MockHttpMessageHandler(forbiddenResponse, HttpStatusCode.Forbidden);
         var httpClient = new HttpClient(messageHandler);
-        
+
         ApiClient sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
@@ -167,15 +168,15 @@ public class ApiClientUnitTests
             .Create();
 
         // Act
-        Func<Task> act = async() => await sut.GetAllProjects();
-        
+        Func<Task> act = async () => await sut.EnsureAccessToken();
+
         // Assert
         await act
             .Should()
             .ThrowAsync<UnauthorizedAccessException>()
             .WithMessage(forbiddenResponse);
     }
-    
+
     [Fact]
     public async Task GetAccessToken_InvalidClientSecret_Should_Throw_401Unauthorized()
     {
@@ -183,11 +184,11 @@ public class ApiClientUnitTests
         const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
         const string clientSecret = "InvalidClientSecret";
         const string accountId = "f33e018a-d1f5-4ef3-ae67-606de6aeed87";
-        const string unauthorizedResponse = 
+        const string unauthorizedResponse =
             $@"{{""developerMessage"":""The client_id (application key)/client_secret are not valid"",""errorCode"":""AUTH-003"",""more info"":""https://forge.autodesk.com/en/docs/oauth/v2/developers_guide/error_handling/""}}";
         var messageHandler = new MockHttpMessageHandler(unauthorizedResponse, HttpStatusCode.Unauthorized);
         var httpClient = new HttpClient(messageHandler);
-        
+
         ApiClient sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
@@ -202,15 +203,15 @@ public class ApiClientUnitTests
             .Create();
 
         // Act
-        Func<Task> act = async() => await sut.GetAllProjects();
-        
+        Func<Task> act = async () => await sut.EnsureAccessToken();
+
         // Assert
         await act
             .Should()
             .ThrowAsync<UnauthorizedAccessException>()
             .WithMessage(unauthorizedResponse);
     }
-    
+
     [Fact]
     public async Task GetAccessToken_InternalServerError_Should_Throw_GenericHttpRequestException()
     {
@@ -220,7 +221,7 @@ public class ApiClientUnitTests
         const string accountId = "f33e018a-d1f5-4ef3-ae67-606de6aeed87";
         var messageHandler = new MockHttpMessageHandler(string.Empty, HttpStatusCode.InternalServerError);
         var httpClient = new HttpClient(messageHandler);
-        
+
         ApiClient sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
@@ -235,17 +236,40 @@ public class ApiClientUnitTests
             .Create();
 
         // Act
-        Func<Task> act = async() => await sut.GetAllProjects();
-        
+        Func<Task> act = async () => await sut.EnsureAccessToken();
+
         // Assert
         await act
             .Should()
             .ThrowAsync<HttpRequestException>();
     }
-    
-    
-    
-    
-    
-    
+
+    [Fact]
+    public async Task GetProjects_Should_ReturnOneProject()
+    {
+        // Arrange
+        const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
+        const string clientSecret = "wE3GFhuIsGJEi3d4";
+        const string accountId = "0577ff54-1967-4c9b-80d4-eb649bd0774d";
+        var messageHandler = new MockHttpMessageHandler(RestApiExampleResponses.ProjectsResponse, HttpStatusCode.OK);
+        var httpClient = new HttpClient(messageHandler);
+        ApiClient sut = TwoLeggedApiClient
+            .Configure()
+            .WithClientId(clientId)
+            .AndClientSecret(clientSecret)
+            .ForAccount(accountId)
+            .WithOptions(options =>
+            {
+                options.HttpClient = httpClient;
+                options.RetryAttempts = 1;
+                options.InitialRetryInSeconds = 1;
+            })
+            .Create();
+
+        // Act
+        List<Project> projects = await sut.GetProjects();
+
+        // Assert
+        projects.Count.Should().Be(1);
+    }
 }
