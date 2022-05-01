@@ -1,0 +1,97 @@
+{
+  "jsonapi": {
+    "version": "1.0"
+  },
+  "links": {
+    "self": {
+      "href": "https://developer.api.autodesk.com/data/v1/projects/b.0577ff54-1967-4c9b-80d4-eb649bd0774d/folders/urn:adsk.wipprod:fs.folder:co.tW57hcgcQxXkBrMu38Az1Z"
+    }
+  },
+  "data": {
+    "type": "folders",
+    "id": "urn:adsk.wipprod:fs.folder:co.tW57hcgcQxXkBrMu38Az1Z",
+    "attributes": {
+      "name": "Drawings",
+      "displayName": "Drawings",
+      "createTime": "2020-08-04T10:13:46.0000000Z",
+      "createUserId": "",
+      "createUserName": "",
+      "lastModifiedTime": "2020-11-03T01:18:21.0000000Z",
+      "lastModifiedUserId": "BN7RST35YBCY",
+      "lastModifiedUserName": "John Doe",
+      "lastModifiedTimeRollup": "2022-04-26T07:23:03.0000000Z",
+      "objectCount": 14,
+      "hidden": false,
+      "extension": {
+        "type": "folders:autodesk.bim360:Folder",
+        "version": "1.0",
+        "schema": {
+          "href": "https://developer.api.autodesk.com/schema/v1/versions/folders:autodesk.bim360:Folder-1.0"
+        },
+        "data": {
+          "visibleTypes": [
+            "items:autodesk.bim360:Document"
+          ],
+          "actions": [
+            "CONVERT",
+            "SPLIT",
+            "OCR"
+          ],
+          "allowedTypes": [
+            "folders:autodesk.bim360:Folder",
+            "items:autodesk.bim360:File",
+            "items:autodesk.bim360:Document",
+            "items:autodesk.bim360:TitleBlock",
+            "items:autodesk.bim360:ReviewDocument"
+          ],
+          "namingStandardIds": []
+        }
+      }
+    },
+    "links": {
+      "self": {
+        "href": "https://developer.api.autodesk.com/data/v1/projects/b.0577ff54-1967-4c9b-80d4-eb649bd0774d/folders/urn:adsk.wipprod:fs.folder:co.tW57hcgcQxXkBrMu38Az1Z"
+      },
+      "webView": {
+        "href": "https://docs.b360.autodesk.com/projects/0577ff54-1967-4c9b-80d4-eb649bd0774d/folders/urn%3Aadsk.wipprod%3Afs.folder%3Aco.tW57hcgcQxXkBrMu38Az1Z"
+      }
+    },
+    "relationships": {
+      "contents": {
+        "links": {
+          "related": {
+            "href": "https://developer.api.autodesk.com/data/v1/projects/b.0577ff54-1967-4c9b-80d4-eb649bd0774d/folders/urn:adsk.wipprod:fs.folder:co.tW57hcgcQxXkBrMu38Az1Z/contents"
+          }
+        }
+      },
+      "parent": {
+        "data": {
+          "type": "folders",
+          "id": "urn:adsk.wipprod:fs.folder:co.DerBocbkXrcYsz43uJLTkW"
+        },
+        "links": {
+          "related": {
+            "href": "https://developer.api.autodesk.com/data/v1/projects/b.0577ff54-1967-4c9b-80d4-eb649bd0774d/folders/urn:adsk.wipprod:fs.folder:co.tW57hcgcQxXkBrMu38Az1Z/parent"
+          }
+        }
+      },
+      "refs": {
+        "links": {
+          "self": {
+            "href": "https://developer.api.autodesk.com/data/v1/projects/b.0577ff54-1967-4c9b-80d4-eb649bd0774d/folders/urn:adsk.wipprod:fs.folder:co.tW57hcgcQxXkBrMu38Az1Z/relationships/refs"
+          },
+          "related": {
+            "href": "https://developer.api.autodesk.com/data/v1/projects/b.0577ff54-1967-4c9b-80d4-eb649bd0774d/folders/urn:adsk.wipprod:fs.folder:co.tW57hcgcQxXkBrMu38Az1Z/refs"
+          }
+        }
+      },
+      "links": {
+        "links": {
+          "self": {
+            "href": "https://developer.api.autodesk.com/data/v1/projects/b.0577ff54-1967-4c9b-80d4-eb649bd0774d/folders/urn:adsk.wipprod:fs.folder:co.tW57hcgcQxXkBrMu38Az1Z/relationships/links"
+          }
+        }
+      }
+    }
+  }
+}

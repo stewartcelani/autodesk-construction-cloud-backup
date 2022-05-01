@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net;
+using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using AutodeskConstructionCloud.ApiClient.Entities;
@@ -51,8 +53,8 @@ public class ApiClientIntegrationTests
         // Assert
         await act
             .Should()
-            .ThrowAsync<UnauthorizedAccessException>()
-            .WithMessage(forbiddenResponse);
+            .ThrowAsync<HttpRequestException>()
+            .Where(e => e.StatusCode == HttpStatusCode.Forbidden && e.Message == forbiddenResponse);
     }
     
     [Fact]
@@ -83,8 +85,8 @@ public class ApiClientIntegrationTests
         // Assert
         await act
             .Should()
-            .ThrowAsync<UnauthorizedAccessException>()
-            .WithMessage(unauthorizedResponse);
+            .ThrowAsync<HttpRequestException>()
+            .Where(e => e.StatusCode == HttpStatusCode.Unauthorized && e.Message == unauthorizedResponse);
     }
 
     [Fact]

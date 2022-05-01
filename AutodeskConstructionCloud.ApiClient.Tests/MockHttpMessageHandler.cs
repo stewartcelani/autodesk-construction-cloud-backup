@@ -41,6 +41,7 @@ public class MockHttpMessageHandler : HttpMessageHandler
             _messageHandlerMappings.First(m => m.RequestUri == request.RequestUri);
         return new HttpResponseMessage
         {
+            RequestMessage = request,
             StatusCode = mapping.StatusCode,
             Content = new StringContent(mapping.Response)
         };

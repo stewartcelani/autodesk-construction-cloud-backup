@@ -7,5 +7,5 @@ public class Project
     public string Name { get; set; }
     public string RootFolderId { get; set; }
     public List<Folder> Folders { get; set; } = new List<Folder>();
-    public List<File> Files { get; set; } = new List<File>();
+    public List<File> Files => Folders.SelectMany(folder => folder.Files).ToList();
 }

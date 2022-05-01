@@ -6,8 +6,8 @@ namespace Library.FileDownloader;
 
 public class FileDownloaderConfiguration
 {
-    public RetryPolicy RetryPolicy { get; }
-    public ILogger? Logger { get; }
+    public RetryPolicy RetryPolicy { get; set; }
+    public ILogger? Logger { get; set;  }
 
     /*
      * initialRetryDelayInSeconds doubles each retryAttempt

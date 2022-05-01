@@ -10,6 +10,22 @@ using LogLevel = Library.Logger.LogLevel;
 
 
 
+var folderContentsEndpoint =
+    "https://developer.api.autodesk.com/data/v1/projects/b.080f8f60-6a72-4aa7-a7ee-15490143566e/folders/urn:adsk.wipprod:fs.folder:co.CdzEocbkRXaAsz75uHLTdQ/contents";
+
+string ExtractFolderIdFromFolderContentsEndpoint(string folderContentsEndpoint)
+{
+    string[] split = folderContentsEndpoint.Split("/");
+
+    return split[^2];
+}
+
+string folderId = ExtractFolderIdFromFolderContentsEndpoint(folderContentsEndpoint);
+Console.ReadLine();
+
+
+
+/*
 const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
 const string clientSecret = "wE3GFhuIsGJEi3d4";
 const string accountId = "48a4d1eb-a370-42fe-89c9-4dd9e2ad9d41";
@@ -34,7 +50,7 @@ ApiClient sut = TwoLeggedApiClient
 // Act
 
 await sut.EnsureAccessToken();
-
+/*
 
 
 
