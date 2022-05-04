@@ -18,7 +18,7 @@ public class ApiClient : IApiClient
         Config = config;
     }
 
-    public async Task<List<Project>> GetProjects()
+    public async Task<List<Project>> GetProjects(bool getRootFolderContents = false)
     {
         Config.Logger?.Trace("Top");
         var projectsEndpoint = $"https://developer.api.autodesk.com/project/v1/hubs/{Config.HubId}/projects";
@@ -51,36 +51,31 @@ public class ApiClient : IApiClient
             }
         } while (true);
 
-        List<Project> projects = (from projectsResponse in projectsResponses
-            from project in projectsResponse.Data
-            select new Project
+        var projects = new List<Project>();
+        foreach (ProjectsResponseProject project in projectsResponses.SelectMany(projectsResponse =>
+                     projectsResponse.Data))
+        {
+            projects.Add(new Project(this)
             {
-                ProjectId = project.Id,
-                AccountId = Config.AccountId,
+                ProjectId = project.Id, 
+                AccountId = Config.AccountId, 
                 Name = project.Attributes.Name,
-                RootFolderId = project.Relationships.RootFolder.Data.Id
-            }).ToList();
+                RootFolderId = project.Relationships.RootFolder.Data.Id,
+                RootFolder = getRootFolderContents ? await GetFolder(project.Id, project.Relationships.RootFolder.Data.Id) : null
+            });
+        }
 
         Config.Logger?.Debug($"Returning {projects.Count} projects.");
         return projects;
     }
-
-    public async Task<Folder> GetFolderContentsFor(Folder folder)
-    {
-        Config.Logger?.Trace("Top");
-        (folder.Folders, folder.Files) = await GetFolderContents(folder.ProjectId, folder.FolderId);
-        Config.Logger?.Debug($"Returning folder (id: {folder.FolderId}, name: {folder.Name}) with " +
-                             $"{folder.Files.Count} files and {folder.Folders.Count} subfolders");
-        return folder;
-    }
-
+    
     public async Task<Folder> GetFolderWithContents(string projectId, string folderId)
     {
         Config.Logger?.Trace("Top");
         Folder folder = await GetFolder(projectId, folderId);
-        (folder.Folders, folder.Files) = await GetFolderContents(projectId, folderId);
+        await GetFolderContents(folder);
         Config.Logger?.Debug($"Returning folder (id: {folder.FolderId}, name: {folder.Name}) with " +
-                             $"{folder.Files.Count} files and {folder.Folders.Count} subfolders");
+                             $"{folder.Files.Count} files and {folder.Subfolders.Count} subfolders");
         return folder;
     }
 
@@ -89,8 +84,6 @@ public class ApiClient : IApiClient
         Config.Logger?.Trace("Top");
         var folderEndpoint =
             $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/{folderId}";
-        if (Config.ApiClientType.Equals(ApiClientType.BIM360))
-            folderEndpoint = $"https://developer.api.autodesk.com/data/v1/projects/b.{projectId}/folders/{folderId}";
         const string moreDetailsUrl =
             "https://forge.autodesk.com/en/docs/data/v2/reference/http/projects-project_id-folders-folder_id-contents-GET/";
         var responseString = string.Empty;
@@ -112,14 +105,25 @@ public class ApiClient : IApiClient
         Config.Logger?.Debug($"Returning with folderId {folder.FolderId} and name {folder.Name}");
         return folder;
     }
+
+    public async Task GetFolderContentsRecursively(Folder folder)
+    {
+        Config.Logger?.Trace("Top");
+        await GetFolderContents(folder);
+        foreach (Folder folderFolder in folder.Subfolders)
+        {
+            await GetFolderContentsRecursively(folderFolder);
+        }
+
+        Config.Logger?.Debug($"Returning folder (id: {folder.FolderId}, name: {folder.Name}) with " +
+                             $"{folder.Files.Count} files and {folder.Subfolders.Count} subfolders");
+    }
     
-    public async Task<(List<Folder>, List<File>)> GetFolderContents(string projectId, string folderId)
+    public async Task GetFolderContents(Folder folder)
     {
         Config.Logger?.Trace("Top");
         string folderContentsEndpoint =
-            $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/{folderId}/contents";
-        if (Config.ApiClientType.Equals(ApiClientType.BIM360))
-            folderContentsEndpoint = $"https://developer.api.autodesk.com/data/v1/projects/b.{projectId}/folders/{folderId}/contents";
+            $"https://developer.api.autodesk.com/data/v1/projects/{folder.ProjectId}/folders/{folder.FolderId}/contents";
         const string moreDetailsUrl =
             "https://forge.autodesk.com/en/docs/data/v2/reference/http/projects-project_id-folders-folder_id-contents-GET/";
         var folderContentsResponses = new List<FolderContentsResponse>();
@@ -150,28 +154,30 @@ public class ApiClient : IApiClient
             }
         } while (true);
 
-        List<File> filesInFolder = (from response in folderContentsResponses
+        folder.Files = (from response in folderContentsResponses
+            where response.Included is not null
             from included in response.Included
             where included.Relationships.Storage.Meta.Link.Href is not null
-            select MapFileFromFolderContentsResponseIncluded(projectId, folderId, included)).ToList();
-        
-        List<Folder> foldersInFolder = (from response in folderContentsResponses
+            select MapFileFromFolderContentsResponseIncluded(folder, included)).ToList();
+
+        folder.Subfolders = (from response in folderContentsResponses
+            where response.Data is not null
             from data in response.Data
             where data.Type.Equals("folders")
-            select MapFolderFromFolderContentsResponseData(projectId, folderId, data)).ToList();
-        
-        Config.Logger?.Debug($"Returning with {filesInFolder.Count} files and {foldersInFolder.Count} folders");
-        return (foldersInFolder, filesInFolder);
+            select MapFolderFromFolderContentsResponseData(folder, data)).ToList();
+
+        Config.Logger?.Debug($"Returning with {folder.Files.Count} files and {folder.Subfolders.Count} folders");
     }
 
-    private static Folder MapFolderFromFolderContentsResponseData(string projectId, string parentFolderId,
+    private Folder MapFolderFromFolderContentsResponseData(string projectId, string parentFolderId,
         FolderContentsResponseData data)
     {
-        return new Folder()
+        return new Folder(this)
         {
             FolderId = data.Id,
             ProjectId = projectId,
             ParentFolderId = parentFolderId,
+            ParentFolder = null,
             Name = data.Attributes.Name,
             Type = data.Type,
             CreateTime = data.Attributes.CreateTime,
@@ -184,18 +190,44 @@ public class ApiClient : IApiClient
             LastModifiedUserId = data.Attributes.LastModifiedUserId,
             LastModifiedUserName = data.Attributes.LastModifiedUserName,
             ObjectCount = data.Attributes.ObjectCount,
-            Folders = new List<Folder>(),
+            Subfolders = new List<Folder>(),
             Files = new List<File>()
         };
     }
 
-    private static File MapFileFromFolderContentsResponseIncluded(string projectId, string folderId, FolderContentsResponseIncluded included)
+    private Folder MapFolderFromFolderContentsResponseData(Folder parentFolder, FolderContentsResponseData data)
+    {
+        return new Folder(this)
+        {
+            FolderId = data.Id,
+            ProjectId = parentFolder.ProjectId,
+            ParentFolderId = parentFolder.FolderId,
+            ParentFolder = parentFolder,
+            Name = data.Attributes.Name,
+            Type = data.Type,
+            CreateTime = data.Attributes.CreateTime,
+            CreateUserId = data.Attributes.CreateUserId,
+            CreateUserName = data.Attributes.CreateUserName,
+            DisplayName = data.Attributes.DisplayName,
+            Hidden = data.Attributes.Hidden,
+            LastModifiedTime = data.Attributes.LastModifiedTime,
+            LastModifiedTimeRollup = data.Attributes.LastModifiedTimeRollup,
+            LastModifiedUserId = data.Attributes.LastModifiedUserId,
+            LastModifiedUserName = data.Attributes.LastModifiedUserName,
+            ObjectCount = data.Attributes.ObjectCount,
+            Subfolders = new List<Folder>(),
+            Files = new List<File>()
+        };
+    }
+
+    private static File MapFileFromFolderContentsResponseIncluded(Folder parentFolder,
+        FolderContentsResponseIncluded included)
     {
         return new File()
         {
             FileId = included.Id,
-            FolderId = folderId,
-            ProjectId = projectId,
+            ProjectId = parentFolder.ProjectId,
+            ParentFolder = parentFolder,
             Name = included.Attributes.Name,
             Type = included.Type,
             DownloadUrl = included.Relationships.Storage.Meta.Link.Href,

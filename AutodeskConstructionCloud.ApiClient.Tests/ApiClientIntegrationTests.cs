@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -136,6 +137,31 @@ public class ApiClientIntegrationTests
         
         // Assert
         projects.Count.Should().BeGreaterOrEqualTo(1);
+        projects.All(x => x.RootFolder == null).Should().BeTrue();
+    }
+    
+    [Fact]
+    public async Task GetProjects_getRootFolderContents_True_Should_ReturnOneOrMoreProjects()
+    {
+        // Arrange
+        ApiClient sut = TwoLeggedApiClient
+            .Configure()
+            .WithClientId(_clientId)
+            .AndClientSecret(_clientSecret)
+            .ForAccount(_accountId)
+            .WithOptions(options =>
+            {
+                options.RetryAttempts = 1;
+                options.InitialRetryInSeconds = 1;
+            })
+            .Create();
+
+        // Act
+        List<Project> projects = await sut.GetProjects(true);
+        
+        // Assert
+        projects.Count.Should().BeGreaterOrEqualTo(1);
+        projects.All(x => x.RootFolder != null).Should().BeTrue();
     }
 
 }

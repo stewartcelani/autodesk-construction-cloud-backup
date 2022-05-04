@@ -6,22 +6,40 @@ using AutodeskConstructionCloud.ApiClient.Tests;
 using Library.Logger;
 using Library.SecretsManager;
 using NLog;
+using NSubstitute.Exceptions;
 using LogLevel = Library.Logger.LogLevel;
 
 
+string clientId = SecretsManager.GetEnvironmentVariableOrDefaultTo("acc:clientid", "InvalidClientId");
+string clientSecret = SecretsManager.GetEnvironmentVariableOrDefaultTo("acc:clientsecret", "InvalidClientSecret");
+string accountId = SecretsManager.GetEnvironmentVariableOrDefaultTo("acc:accountid", "InvalidAccountId");
 
-var folderContentsEndpoint =
-    "https://developer.api.autodesk.com/data/v1/projects/b.080f8f60-6a72-4aa7-a7ee-15490143566e/folders/urn:adsk.wipprod:fs.folder:co.CdzEocbkRXaAsz75uHLTdQ/contents";
+ApiClient client = TwoLeggedApiClient
+    .Configure()
+    .WithClientId(clientId)
+    .AndClientSecret(clientSecret)
+    .ForAccount(accountId)
+    .WithOptions(options =>
+    {
+        options.Logger = new NLogLogger(new NLogLoggerConfiguration()
+        {
+            LogLevel = LogLevel.Trace,
+            LogToConsole = true
+        });
+        options.RetryAttempts = 12;
+        options.InitialRetryInSeconds = 2;
+    })
+    .Create();
 
-string ExtractFolderIdFromFolderContentsEndpoint(string folderContentsEndpoint)
-{
-    string[] split = folderContentsEndpoint.Split("/");
+List<Project> projects = await client.GetProjects();
 
-    return split[^2];
-}
-
-string folderId = ExtractFolderIdFromFolderContentsEndpoint(folderContentsEndpoint);
 Console.ReadLine();
+Project proj = projects.First(x => x.Name == "Pilot Project");
+await proj.GetContentsRecursively();
+
+
+Console.ReadLine();
+
 
 
 

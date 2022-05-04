@@ -3,7 +3,7 @@
 public class File
 {
     public string FileId { get; set; }
-    public string FolderId { get; set; }
+    public Folder ParentFolder { get; set; }
     public string ProjectId { get; set; }
     public string Name { get; set; }
     public string FileType { get; set; }
@@ -23,4 +23,10 @@ public class File
     public DateTime ReservedTime { get; set; }
     public string ReservedUserId { get; set; }
     public string ReservedUserName { get; set; }
+    /*
+     * Properties not directly from the Autodesk Api are below
+     */
+    public int DownloadAttempts { get; set; } = 0;
+    public FileInfo? FileInfo { get; set; }
+    public bool Downloaded => FileInfo != null;
 }

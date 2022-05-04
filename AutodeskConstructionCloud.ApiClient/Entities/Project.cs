@@ -2,20 +2,39 @@
 
 public class Project
 {
+    private readonly ApiClient _apiClient;
+
+    public Project(ApiClient apiClient)
+    {
+        _apiClient = apiClient;
+    }
+    
     public string ProjectId { get; set; }
     public string AccountId { get; set; }
     public string Name { get; set; }
+    
     public string RootFolderId { get; set; }
-    public List<Folder> Folders { get; set; } = new List<Folder>();
-    public List<File> Files => Folders.SelectMany(folder => folder.Files).ToList();
-    public bool GetContents(ApiClient apiClient, bool recursive = false)
+    public Folder? RootFolder { get; set; }
+
+    /*
+    public List<Folder> FoldersRecursive => RootFolder != null
+        ? RootFolder.Folders.SelectMany(folder => folder.Folders).ToList()
+        : new List<Folder>();
+
+    public List<File> FilesRecursive => RootFolder != null 
+        ? RootFolder.Folders.SelectMany(folder => folder.Files).ToList() 
+        : new List<File>();
+        */
+    
+    public async Task GetContents()
     {
-        throw new NotImplementedException();
+        RootFolder ??= await _apiClient.GetFolder(ProjectId, RootFolderId);
+        await RootFolder.GetContents();
     }
 
-    public bool GetContentsRecursively(ApiClient apiClient)
+    public async Task GetContentsRecursively()
     {
-        return GetContents(apiClient, true);
+        RootFolder ??= await _apiClient.GetFolder(ProjectId, RootFolderId);
+        await RootFolder.GetContentsRecursively();
     }
-    
 }
