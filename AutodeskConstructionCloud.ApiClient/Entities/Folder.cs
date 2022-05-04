@@ -22,4 +22,14 @@ public class Folder
     public int ObjectCount { get; set; }
     public List<Folder> Folders { get; set; } = new List<Folder>();
     public List<File> Files { get; set; } = new List<File>();
+    
+    public bool GetContents(ApiClient apiClient, bool recursive = false)
+    {
+        throw new NotImplementedException();
+    }
+
+    public bool GetContentsRecursively(ApiClient apiClient)
+    {
+        return GetContents(apiClient, true);
+    }
 }

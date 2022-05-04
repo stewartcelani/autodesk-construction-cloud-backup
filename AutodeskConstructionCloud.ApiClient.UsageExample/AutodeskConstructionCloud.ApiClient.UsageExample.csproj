@@ -10,7 +10,7 @@
     <ItemGroup>
       <ProjectReference Include="..\AutodeskConstructionCloud.ApiClient.Tests\AutodeskConstructionCloud.ApiClient.Tests.csproj" />
       <ProjectReference Include="..\AutodeskConstructionCloud.ApiClient\AutodeskConstructionCloud.ApiClient.csproj" />
-      <ProjectReference Include="..\Library\Library.csproj" />
+      <ProjectReference Include="..\Library.SecretsManager\Library.SecretsManager.csproj" />
     </ItemGroup>
 
 </Project>

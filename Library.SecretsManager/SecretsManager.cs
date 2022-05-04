@@ -1,4 +1,4 @@
-﻿namespace Library;
+﻿namespace Library.SecretsManager;
 
 public static class SecretsManager
 {

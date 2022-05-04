@@ -8,4 +8,14 @@ public class Project
     public string RootFolderId { get; set; }
     public List<Folder> Folders { get; set; } = new List<Folder>();
     public List<File> Files => Folders.SelectMany(folder => folder.Files).ToList();
+    public bool GetContents(ApiClient apiClient, bool recursive = false)
+    {
+        throw new NotImplementedException();
+    }
+
+    public bool GetContentsRecursively(ApiClient apiClient)
+    {
+        return GetContents(apiClient, true);
+    }
+    
 }

@@ -18,7 +18,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Library.Logger.Tests", "Lib
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Library.Logger.UsageExample", "Library.Logger.UsageExample\Library.Logger.UsageExample.csproj", "{96333C7C-7463-4E85-B5D9-0E897D7DA573}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Library", "Library\Library.csproj", "{087FD985-DE18-4A01-8787-5AFE8F258836}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Library.SecretsManager", "Library.SecretsManager\Library.SecretsManager.csproj", "{087FD985-DE18-4A01-8787-5AFE8F258836}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

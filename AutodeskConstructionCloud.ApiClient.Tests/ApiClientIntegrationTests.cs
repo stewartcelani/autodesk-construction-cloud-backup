@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using AutodeskConstructionCloud.ApiClient.Entities;
 using Xunit;
 using FluentAssertions;
-using Library;
+using Library.SecretsManager;
 // ReSharper disable AsyncVoidLambda
 
 

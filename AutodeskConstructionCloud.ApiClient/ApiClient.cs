@@ -21,7 +21,7 @@ public class ApiClient : IApiClient
     public async Task<List<Project>> GetProjects()
     {
         Config.Logger?.Trace("Top");
-        var projectsEndpoint = $"https://developer.api.autodesk.com/project/v1/hubs/b.{Config.AccountId}/projects";
+        var projectsEndpoint = $"https://developer.api.autodesk.com/project/v1/hubs/{Config.HubId}/projects";
         const string moreDetailsUrl =
             "https://forge.autodesk.com/en/docs/data/v2/reference/http/hubs-hub_id-projects-GET/";
         var projectsResponses = new List<ProjectsResponse>();
@@ -88,7 +88,9 @@ public class ApiClient : IApiClient
     {
         Config.Logger?.Trace("Top");
         var folderEndpoint =
-            $"https://developer.api.autodesk.com/data/v1/projects/b.{projectId}/folders/{folderId}";
+            $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/{folderId}";
+        if (Config.ApiClientType.Equals(ApiClientType.BIM360))
+            folderEndpoint = $"https://developer.api.autodesk.com/data/v1/projects/b.{projectId}/folders/{folderId}";
         const string moreDetailsUrl =
             "https://forge.autodesk.com/en/docs/data/v2/reference/http/projects-project_id-folders-folder_id-contents-GET/";
         var responseString = string.Empty;
@@ -110,13 +112,14 @@ public class ApiClient : IApiClient
         Config.Logger?.Debug($"Returning with folderId {folder.FolderId} and name {folder.Name}");
         return folder;
     }
-
-
+    
     public async Task<(List<Folder>, List<File>)> GetFolderContents(string projectId, string folderId)
     {
         Config.Logger?.Trace("Top");
         string folderContentsEndpoint =
-            $"https://developer.api.autodesk.com/data/v1/projects/b.{projectId}/folders/{folderId}/contents";
+            $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/{folderId}/contents";
+        if (Config.ApiClientType.Equals(ApiClientType.BIM360))
+            folderContentsEndpoint = $"https://developer.api.autodesk.com/data/v1/projects/b.{projectId}/folders/{folderId}/contents";
         const string moreDetailsUrl =
             "https://forge.autodesk.com/en/docs/data/v2/reference/http/projects-project_id-folders-folder_id-contents-GET/";
         var folderContentsResponses = new List<FolderContentsResponse>();

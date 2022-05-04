@@ -4,7 +4,7 @@ using AutodeskConstructionCloud.ApiClient;
 using AutodeskConstructionCloud.ApiClient.Entities;
 using AutodeskConstructionCloud.ApiClient.Tests;
 using Library.Logger;
-using Library;
+using Library.SecretsManager;
 using NLog;
 using LogLevel = Library.Logger.LogLevel;
 
