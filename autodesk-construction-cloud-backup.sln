@@ -20,6 +20,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Library.Logger.UsageExample
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Library.SecretsManager", "Library.SecretsManager\Library.SecretsManager.csproj", "{087FD985-DE18-4A01-8787-5AFE8F258836}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Library.Extensions", "Library.Extensions\Library.Extensions.csproj", "{023E7391-9AFC-402F-BDB6-1C145B71083F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -66,5 +68,9 @@ Global
 		{087FD985-DE18-4A01-8787-5AFE8F258836}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{087FD985-DE18-4A01-8787-5AFE8F258836}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{087FD985-DE18-4A01-8787-5AFE8F258836}.Release|Any CPU.Build.0 = Release|Any CPU
+		{023E7391-9AFC-402F-BDB6-1C145B71083F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{023E7391-9AFC-402F-BDB6-1C145B71083F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{023E7391-9AFC-402F-BDB6-1C145B71083F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{023E7391-9AFC-402F-BDB6-1C145B71083F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

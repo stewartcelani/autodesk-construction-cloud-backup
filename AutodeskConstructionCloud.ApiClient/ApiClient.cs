@@ -157,7 +157,7 @@ public class ApiClient : IApiClient
         folder.Files = (from response in folderContentsResponses
             where response.Included is not null
             from included in response.Included
-            where included.Relationships.Storage.Meta.Link.Href is not null
+            where included.Relationships?.Storage?.Meta?.Link?.Href is not null
             select MapFileFromFolderContentsResponseIncluded(folder, included)).ToList();
 
         folder.Subfolders = (from response in folderContentsResponses

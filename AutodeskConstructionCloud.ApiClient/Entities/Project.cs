@@ -1,4 +1,6 @@
-﻿namespace AutodeskConstructionCloud.ApiClient.Entities;
+﻿using Library.Extensions;
+
+namespace AutodeskConstructionCloud.ApiClient.Entities;
 
 public class Project
 {
@@ -15,17 +17,23 @@ public class Project
     
     public string RootFolderId { get; set; }
     public Folder? RootFolder { get; set; }
-
-    /*
-    public List<Folder> FoldersRecursive => RootFolder != null
-        ? RootFolder.Folders.SelectMany(folder => folder.Folders).ToList()
-        : new List<Folder>();
-
-    public List<File> FilesRecursive => RootFolder != null 
-        ? RootFolder.Folders.SelectMany(folder => folder.Files).ToList() 
-        : new List<File>();
-        */
     
+    public IEnumerable<Folder> SubfoldersRecursive
+    {
+        get
+        {
+            return RootFolder is null ? new List<Folder>() : RootFolder.Subfolders.RecursiveFlatten(x => x.Subfolders);
+        }
+    }
+    
+    public IEnumerable<File> FilesRecursive
+    {
+        get
+        {
+            return RootFolder is null ? new List<File>() : RootFolder.Files.Concat(SubfoldersRecursive.SelectMany(x => x.Files));
+        }
+    }
+
     public async Task GetContents()
     {
         RootFolder ??= await _apiClient.GetFolder(ProjectId, RootFolderId);

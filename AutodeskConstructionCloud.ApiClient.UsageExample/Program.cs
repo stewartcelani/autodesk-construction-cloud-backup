@@ -8,6 +8,7 @@ using Library.SecretsManager;
 using NLog;
 using NSubstitute.Exceptions;
 using LogLevel = Library.Logger.LogLevel;
+using Library.Extensions;
 
 
 string clientId = SecretsManager.GetEnvironmentVariableOrDefaultTo("acc:clientid", "InvalidClientId");
@@ -23,7 +24,7 @@ ApiClient client = TwoLeggedApiClient
     {
         options.Logger = new NLogLogger(new NLogLoggerConfiguration()
         {
-            LogLevel = LogLevel.Trace,
+            LogLevel = LogLevel.Debug,
             LogToConsole = true
         });
         options.RetryAttempts = 12;
@@ -33,12 +34,40 @@ ApiClient client = TwoLeggedApiClient
 
 List<Project> projects = await client.GetProjects();
 
-Console.ReadLine();
-Project proj = projects.First(x => x.Name == "Pilot Project");
+Project proj = projects.First(x => x.Name == "75132");
 await proj.GetContentsRecursively();
 
 
 Console.ReadLine();
+
+
+Folder rootFolder = FakeData.GetFakeFolder(client);
+rootFolder.Subfolders = FakeData.GetFakeFolders(4, client);
+foreach (Folder folder in rootFolder.Subfolders)
+{
+    folder.Subfolders = FakeData.GetFakeFolders(4, client);
+}
+
+var flatten = rootFolder.Subfolders.RecursiveFlatten(x => x.Subfolders).ToList();
+
+Console.ReadLine();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

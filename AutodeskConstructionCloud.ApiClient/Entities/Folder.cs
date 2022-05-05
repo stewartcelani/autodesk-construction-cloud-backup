@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using Library.Extensions;
+
 
 namespace AutodeskConstructionCloud.ApiClient.Entities;
 
@@ -30,18 +31,29 @@ public class Folder
     public int ObjectCount { get; set; }
     public List<Folder> Subfolders { get; set; } = new List<Folder>();
     public List<File> Files { get; set; } = new List<File>();
-    /*
-    public List<Folder> FoldersRecursive => (List<Folder>)Folders.Concat(Folders.SelectMany(folder => folder.Folders).ToList());
-    public List<File> FilesRecursive => (List<File>)Files.Concat(Folders.SelectMany(folder => folder.Files).ToList());
-    */
     public bool IsEmpty => Subfolders.Count + Files.Count == 0;
     public bool IsNotEmpty => IsEmpty == false;
-
+    public DirectoryInfo? DirectoryInfo { get; set; }
+    public bool Created => DirectoryInfo != null;
+    public IEnumerable<Folder> SubfoldersRecursive
+    {
+        get
+        {
+            return Subfolders.RecursiveFlatten(x => x.Subfolders);
+        }
+    }
+    
+    public IEnumerable<File> FilesRecursive
+    {
+        get
+        {
+            return Files.Concat(SubfoldersRecursive.SelectMany(x => x.Files));
+        }
+    }
     public async Task GetContents()
     {
         await _apiClient.GetFolderContents(this);
     }
-
     public async Task GetContentsRecursively()
     {
         await _apiClient.GetFolderContentsRecursively(this);
