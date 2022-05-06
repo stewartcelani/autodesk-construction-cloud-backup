@@ -32,4 +32,8 @@ public class File
     public int DownloadAttempts { get; set; } = 0;
     public FileInfo? FileInfo { get; set; }
     public bool Downloaded => FileInfo != null;
+    public string GetPath(string delimiter = @"\")
+    {
+        return $"{ParentFolder.GetPath(delimiter)}{delimiter}{Name}";
+    }
 }

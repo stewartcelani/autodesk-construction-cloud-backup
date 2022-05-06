@@ -19,7 +19,7 @@ public static class FakeData
         return folderList;
     }
 
-    public static Folder GetFakeFolder(ApiClient apiClient)
+    public static Folder GetFakeFolder(ApiClient apiClient, Folder? parentFolder = null)
     {
         var faker = new Faker();
         return new Folder(apiClient)
@@ -27,7 +27,7 @@ public static class FakeData
             FolderId = Guid.NewGuid().ToString(),
             ProjectId = Guid.NewGuid().ToString(),
             ParentFolderId = Guid.NewGuid().ToString(),
-            ParentFolder = null,
+            ParentFolder = parentFolder,
             Name = faker.Company.CompanyName(),
             Type = "Folder",
             CreateTime = DateTime.Now,
@@ -43,14 +43,14 @@ public static class FakeData
         };
     }
     
-    public static File GetFakeFile()
+    public static File GetFakeFile(Folder? parentFolder = null)
     {
         var faker = new Faker();
         return new File()
         {
             FileId = Guid.NewGuid().ToString(),
             ProjectId = Guid.NewGuid().ToString(),
-            ParentFolder = null,
+            ParentFolder = parentFolder,
             Name = faker.Company.CompanyName(),
             Type = "File",
             VersionNumber = 1,

@@ -3,13 +3,14 @@ using System.Net.Http.Headers;
 using AutodeskConstructionCloud.ApiClient;
 using AutodeskConstructionCloud.ApiClient.Entities;
 using AutodeskConstructionCloud.ApiClient.Tests;
+using FluentAssertions;
 using Library.Logger;
 using Library.SecretsManager;
 using NLog;
 using NSubstitute.Exceptions;
 using LogLevel = Library.Logger.LogLevel;
 using Library.Extensions;
-
+using File = AutodeskConstructionCloud.ApiClient.Entities.File;
 
 string clientId = SecretsManager.GetEnvironmentVariableOrDefaultTo("acc:clientid", "InvalidClientId");
 string clientSecret = SecretsManager.GetEnvironmentVariableOrDefaultTo("acc:clientsecret", "InvalidClientSecret");
@@ -37,7 +38,24 @@ ApiClient apiClient = TwoLeggedApiClient
 
 Project sample = await apiClient.GetProject("b.62185181-412c-4c01-b45c-6fcd429e58b2");
 await sample.GetContentsRecursively();
+foreach (Folder folder in sample.SubfoldersRecursive)
+{
+    Console.WriteLine(folder.GetPath());
+}
+foreach (File file in sample.FilesRecursive)
+{
+    Console.WriteLine(file.GetPath());
+}
+
+
+/*
+Folder rootFolder = FakeData.GetFakeFolder(apiClient);
+rootFolder.Subfolders.Add(FakeData.GetFakeFolder(apiClient, rootFolder));
+rootFolder.Subfolders[0].Subfolders.Add(FakeData.GetFakeFolder(apiClient, rootFolder.Subfolders[0]));
+
+string path = rootFolder.Subfolders[0].Subfolders[0].GetPath(rootFolder.FolderId);
 Console.ReadLine();
+*/
 
 
 

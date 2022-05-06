@@ -1,4 +1,6 @@
-﻿using Library.Extensions;
+﻿using System.Text;
+using Library.Extensions;
+using NLog.LayoutRenderers.Wrappers;
 
 
 namespace AutodeskConstructionCloud.ApiClient.Entities;
@@ -53,4 +55,27 @@ public class Folder
     {
         await _apiClient.GetFolderContentsRecursively(this);
     }
+
+    public string GetPath(string? rootFolderId = null, StringBuilder? sb = null, string delimiter = @"\")
+    {
+        var thisFolderPath = $"{delimiter}{Name}";
+
+        if (sb is null)
+        {
+            sb = new StringBuilder(thisFolderPath);
+        }
+        else
+        {
+            sb.Insert(0, thisFolderPath);
+        }
+
+        if (FolderId == rootFolderId || ParentFolder is null)
+        {
+            //sb.Insert(0, delimiter);
+            return sb.ToString();
+        }
+
+        return ParentFolder.GetPath(rootFolderId, sb);
+    }
+    
 }
