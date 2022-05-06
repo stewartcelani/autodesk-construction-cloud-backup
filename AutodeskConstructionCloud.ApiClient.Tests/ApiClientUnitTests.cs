@@ -176,14 +176,14 @@ public class ApiClientUnitTests
             .Create();
 
         // Act
-        Func<Task> act = async () => await sut.EnsureAccessToken();
+        Func<Task> act = async () => await sut.GetProjects();
 
         // Assert
         await act
             .Should()
             .ThrowAsync<HttpRequestException>()
             .Where(e => e.StatusCode == HttpStatusCode.Forbidden && e.Message == forbiddenResponse);
-        messageHandler.NumberOfCalls.Should().Be(2);
+        messageHandler.NumberOfCalls.Should().Be(4);
     }
 
     [Fact]
@@ -193,13 +193,22 @@ public class ApiClientUnitTests
         const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
         const string clientSecret = "wE3GFhuIsGJEi3d4";
         const string accountId = "f33e018a-d1f5-4ef3-ae67-606de6aeed87";
-        var messageHandlerMapping = new MockHttpMessageHandlerMapping()
+        var messageHandlerMappings = new List<MockHttpMessageHandlerMapping>
         {
-            RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
-            Response = await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
-            StatusCode = HttpStatusCode.OK
+            new()
+            {
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                Response = await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            },
+            new()
+            {
+                RequestUri = new Uri($"https://developer.api.autodesk.com/project/v1/hubs/b.{accountId}/projects"),
+                Response = await new StreamReader(@"ExampleRestApiResponses\ProjectsResponse.json").ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            }
         };
-        var messageHandler = new MockHttpMessageHandler(messageHandlerMapping);
+        var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
         var httpClient = new HttpClient(messageHandler);
         ApiClient sut = TwoLeggedApiClient
             .Configure()
@@ -216,13 +225,13 @@ public class ApiClientUnitTests
         AuthenticationHeaderValue? initialAuthHeader = sut.Config.HttpClient.DefaultRequestHeaders.Authorization;
 
         // Act
-        await sut.EnsureAccessToken();
+        await sut.GetProjects();
 
         // Assert
         initialAuthHeader.Should().BeNull();
         sut.Config.HttpClient.DefaultRequestHeaders.Authorization.Should().NotBeNull();
         Assert.NotEqual(initialAuthHeader, sut.Config.HttpClient.DefaultRequestHeaders.Authorization);
-        messageHandler.NumberOfCalls.Should().Be(1);
+        messageHandler.NumberOfCalls.Should().Be(2);
     }
 
     [Fact]
@@ -257,14 +266,14 @@ public class ApiClientUnitTests
             .Create();
 
         // Act
-        Func<Task> act = async () => await sut.EnsureAccessToken();
+        Func<Task> act = async () => await sut.GetProjects();
 
         // Assert
         await act
             .Should()
             .ThrowAsync<HttpRequestException>()
             .Where(e => e.StatusCode == HttpStatusCode.Unauthorized && e.Message == unauthorizedResponse);
-        messageHandler.NumberOfCalls.Should().Be(2);
+        messageHandler.NumberOfCalls.Should().Be(4);
     }
 
     [Fact]
@@ -297,14 +306,14 @@ public class ApiClientUnitTests
             .Create();
 
         // Act
-        Func<Task> act = async () => await sut.EnsureAccessToken();
+        Func<Task> act = async () => await sut.GetProjects();
 
         // Assert
         await act
             .Should()
             .ThrowAsync<HttpRequestException>()
             .Where(e => e.StatusCode == HttpStatusCode.InternalServerError);
-        messageHandler.NumberOfCalls.Should().Be(2);
+        messageHandler.NumberOfCalls.Should().Be(4);
     }
 
     [Fact]
@@ -763,7 +772,7 @@ public class ApiClientUnitTests
             .Create();
 
         // Act
-        Folder folder = await sut.GetFolderWithContents(projectId, folderId);
+        Folder folder = await sut.GetFolder(projectId, folderId, true);
 
         // Assert
         folder.ProjectId.Should().Be(projectId);
@@ -838,7 +847,7 @@ public class ApiClientUnitTests
             .Create();
 
         // Act
-        Folder folder = await sut.GetFolderWithContents(projectId, folderId);
+        Folder folder = await sut.GetFolder(projectId, folderId, true);
 
         // Assert
         folder.ProjectId.Should().Be(projectId);
@@ -852,5 +861,272 @@ public class ApiClientUnitTests
         folder.Subfolders.All(x => x.ParentFolderId == folderId).Should().BeTrue();
         folder.Subfolders.All(x => x.ProjectId == projectId).Should().BeTrue();
         messageHandler.NumberOfCalls.Should().Be(4);
+    }
+    
+    [Fact]
+    public async Task GetProject_Should_ReturnProject()
+    {
+        // Arrange
+        const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
+        const string clientSecret = "wE3GFhuIsGJEi3d4";
+        const string accountId = "a867403b-f199-44fa-bdd6-a5dac350a541";
+        const string projectId = "b.62185181-412c-4c01-b45c-6fcd429e58b2";
+        const string projectName = "Sample Project - Seaport Civic Center";
+        const string rootFolderId = "urn:adsk.wipprod:fs.folder:co.z5ncFrXRQiytzcYZrCj9-w";
+        string projectEndpoint = $"https://developer.api.autodesk.com/project/v1/hubs/b.{accountId}/projects/{projectId}";
+        var messageHandlerMappings = new List<MockHttpMessageHandlerMapping>
+        {
+            new()
+            {
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                Response =
+                    await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            },
+            new()
+            {
+                RequestUri = new Uri(projectEndpoint),
+                Response = await new StreamReader(@"ExampleRestApiResponses\ProjectResponse.json").ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            }
+        };
+        var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
+        var httpClient = new HttpClient(messageHandler);
+        ApiClient sut = TwoLeggedApiClient
+            .Configure()
+            .WithClientId(clientId)
+            .AndClientSecret(clientSecret)
+            .ForAccount(accountId)
+            .WithOptions(options =>
+            {
+                options.HttpClient = httpClient;
+                options.RetryAttempts = 1;
+                options.InitialRetryInSeconds = 1;
+            })
+            .Create();
+
+        // Act
+        Project project = await sut.GetProject(projectId);
+
+        // Assert
+        project.ProjectId.Should().Be(projectId);
+        project.Name.Should().Be(projectName);
+        project.RootFolderId.Should().Be(rootFolderId);
+        project.AccountId.Should().Be(accountId);
+        project.RootFolder.Should().BeNull();
+        messageHandler.NumberOfCalls.Should().Be(2);
+    }
+    
+    [Fact]
+    public async Task GetProject_getRootFolderContents_true_Should_ReturnProjectWithRootFolder()
+    {
+        // Arrange
+        const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
+        const string clientSecret = "wE3GFhuIsGJEi3d4";
+        const string accountId = "a867403b-f199-44fa-bdd6-a5dac350a541";
+        const string projectId = "b.62185181-412c-4c01-b45c-6fcd429e58b2";
+        const string projectName = "Sample Project - Seaport Civic Center";
+        const string rootFolderId = "urn:adsk.wipprod:fs.folder:co.z5ncFrXRQiytzcYZrCj9-w";
+        var projectEndpoint = $"https://developer.api.autodesk.com/project/v1/hubs/b.{accountId}/projects/{projectId}";
+        var folderEndpoint =
+            $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/{rootFolderId}";
+        var messageHandlerMappings = new List<MockHttpMessageHandlerMapping>
+        {
+            new()
+            {
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                Response =
+                    await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            },
+            new()
+            {
+                RequestUri = new Uri(projectEndpoint),
+                Response = await new StreamReader(@"ExampleRestApiResponses\ProjectResponse.json").ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            },
+            new()
+            {
+                RequestUri = new Uri(folderEndpoint),
+                Response = await new StreamReader(@"ExampleRestApiResponses\FolderResponse.json").ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            }
+        };
+        var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
+        var httpClient = new HttpClient(messageHandler);
+        ApiClient sut = TwoLeggedApiClient
+            .Configure()
+            .WithClientId(clientId)
+            .AndClientSecret(clientSecret)
+            .ForAccount(accountId)
+            .WithOptions(options =>
+            {
+                options.HttpClient = httpClient;
+                options.RetryAttempts = 1;
+                options.InitialRetryInSeconds = 1;
+            })
+            .Create();
+
+        // Act
+        Project project = await sut.GetProject(projectId, true);
+
+        // Assert
+        project.ProjectId.Should().Be(projectId);
+        project.Name.Should().Be(projectName);
+        project.RootFolderId.Should().Be(rootFolderId);
+        project.AccountId.Should().Be(accountId);
+        project.RootFolder.Should().BeOfType<Folder>();
+        messageHandler.NumberOfCalls.Should().Be(3);
+    }
+    
+    [Fact]
+    public async Task Folder_RecursiveEnumerators_Should_EnumerateContentsAppropriately()
+    {
+        // Arrange
+        const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
+        const string clientSecret = "wE3GFhuIsGJEi3d4";
+        const string accountId = "48a4d1eb-a370-42fe-89c9-4dd9e2ad9d41";
+        const string projectId = "b.0577ff54-1967-4c9b-80d4-eb649bd0774d";
+        const string folderId = "urn:adsk.wipprod:fs.folder:co.DerBocbkXrcYsz43uJLTkW";
+        string folderEndpoint =
+            $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/{folderId}";
+        var messageHandlerMappings = new List<MockHttpMessageHandlerMapping>
+        {
+            new()
+            {
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                Response =
+                    await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            },
+            new()
+            {
+                RequestUri = new Uri(folderEndpoint),
+                Response = await new StreamReader(@"ExampleRestApiResponses\FolderResponseRootFolder.json")
+                    .ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            }
+        };
+        var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
+        var httpClient = new HttpClient(messageHandler);
+        ApiClient sut = TwoLeggedApiClient
+            .Configure()
+            .WithClientId(clientId)
+            .AndClientSecret(clientSecret)
+            .ForAccount(accountId)
+            .WithOptions(options =>
+            {
+                options.HttpClient = httpClient;
+                options.RetryAttempts = 1;
+                options.InitialRetryInSeconds = 1;
+            })
+            .Create();
+        Folder rootFolder = await sut.GetFolder(projectId, folderId);
+        rootFolder.Files.Add(FakeData.GetFakeFile());
+        rootFolder.Subfolders.Add(FakeData.GetFakeFolder(sut));
+        rootFolder.Subfolders[0].Files.Add(FakeData.GetFakeFile());
+        rootFolder.Subfolders[0].Subfolders.Add(FakeData.GetFakeFolder(sut));
+        rootFolder.Subfolders[0].Subfolders[0].Files.Add(FakeData.GetFakeFile());
+        rootFolder.Subfolders[0].Subfolders[0].Subfolders.AddRange(FakeData.GetFakeFolders(8, sut));
+        foreach (Folder subfolder in rootFolder.Subfolders[0].Subfolders[0].Subfolders)
+        {
+            subfolder.Files.Add(FakeData.GetFakeFile());
+        }
+
+        // Act
+        int subfolderCount = rootFolder.SubfoldersRecursive.Count();
+        int filesCount = rootFolder.FilesRecursive.Count();
+
+        // Assert
+        subfolderCount.Should().Be(10);
+        filesCount.Should().Be(11);
+        messageHandler.NumberOfCalls.Should().Be(2);
+    }
+    
+    [Fact]
+    public async Task GetFolderContentsRecursively_Should_RecursivelyReturnFolderContents()
+    {
+        // Arrange
+        const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
+        const string clientSecret = "wE3GFhuIsGJEi3d4";
+        const string accountId = "48a4d1eb-a370-42fe-89c9-4dd9e2ad9d41";
+        const string projectId = "b.62185181-412c-4c01-b45c-6fcd429e58b2";
+        const string folderId = "urn:adsk.wipprod:fs.folder:co.9x1ON-8QSve2cJA6lAiegQ";
+        var folderEndpoint = $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/{folderId}";
+        var messageHandlerMappings = new List<MockHttpMessageHandlerMapping>
+        {
+            new()
+            {
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                Response =
+                    await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            },
+            new()
+            {
+                RequestUri = new Uri(folderEndpoint),
+                Response = await new StreamReader(@"ExampleRestApiResponses\Recursion_GetFolder_1.json")
+                    .ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            },
+            new()
+            {
+                RequestUri = new Uri($"{folderEndpoint}/contents"),
+                Response = await new StreamReader(@"ExampleRestApiResponses\Recursion_GetFolderContents_2.json")
+                    .ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            },
+            new()
+            {
+                RequestUri = new Uri($"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/urn:adsk.wipprod:fs.folder:co.-Cj9GOznROaMrLBtjvWzdg/contents"),
+                Response = await new StreamReader(@"ExampleRestApiResponses\Recursion_GetFolderContents_3.json")
+                    .ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            },
+            new()
+            {
+                RequestUri = new Uri($"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/urn:adsk.wipprod:fs.folder:co.qh2HWoteQ9iymYm7DjbYvg/contents"),
+                Response = await new StreamReader(@"ExampleRestApiResponses\Recursion_GetFolderContents_4.json")
+                    .ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            },
+            new()
+            {
+                RequestUri = new Uri($"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/urn:adsk.wipprod:fs.folder:co.zLe2AszxQjeGgdiSCf49Ug/contents"),
+                Response = await new StreamReader(@"ExampleRestApiResponses\Recursion_GetFolderContents_5.json")
+                    .ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            },
+            new()
+            {
+                RequestUri = new Uri($"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/urn:adsk.wipprod:fs.folder:co.R86FfZRmS5eB0_cn1TIRUg/contents"),
+                Response = await new StreamReader(@"ExampleRestApiResponses\Recursion_GetFolderContents_6.json")
+                    .ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            }
+        };
+        var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
+        var httpClient = new HttpClient(messageHandler);
+        ApiClient sut = TwoLeggedApiClient
+            .Configure()
+            .WithClientId(clientId)
+            .AndClientSecret(clientSecret)
+            .ForAccount(accountId)
+            .WithOptions(options =>
+            {
+                options.HttpClient = httpClient;
+                options.RetryAttempts = 1;
+                options.InitialRetryInSeconds = 1;
+            })
+            .Create();
+        Folder folder = await sut.GetFolder(projectId, folderId);
+
+        // Act
+        await folder.GetContentsRecursively();
+
+        // Assert
+        folder.SubfoldersRecursive.Count().Should().Be(4);
+        folder.FilesRecursive.Count().Should().Be(12);
+        messageHandler.NumberOfCalls.Should().Be(7);
     }
 }

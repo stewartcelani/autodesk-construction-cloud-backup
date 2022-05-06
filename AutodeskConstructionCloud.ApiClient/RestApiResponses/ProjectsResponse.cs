@@ -11,7 +11,7 @@ public class ProjectsResponse
     public ProjectsResponseLinks Links { get; set; }
 
     [JsonProperty("data")]
-    public List<ProjectsResponseProject> Data { get; set; }
+    public List<ProjectResponseProject> Data { get; set; }
 }
 
 public class ProjectsResponseLinks
@@ -32,42 +32,11 @@ public class ProjectsResponseLink
     public string Href { get; set; }
 }
  
-public class ProjectsResponseProject
-{
-    [JsonProperty("type")]
-    public string Type { get; set; }
 
-    [JsonProperty("id")]
-    public string Id { get; set; }
 
-    [JsonProperty("attributes")]
-    public ProjectsResponseDataProjectAttributes Attributes { get; set; }
 
-    [JsonProperty("relationships")]
-    public ProjectsResponseDataProjectRelationships Relationships { get; set; }
 
-}
 
-public class ProjectsResponseDataProjectAttributes
-{
-    [JsonProperty("name")]
-    public string Name { get; set; }
-}
 
-public class ProjectsResponseDataProjectRelationships
-{
-    [JsonProperty("rootFolder")]
-    public ProjectsResponseDataProjectRelationshipsRootFolder RootFolder {get; set; }
-}
 
-public class ProjectsResponseDataProjectRelationshipsRootFolder
-{
-    [JsonProperty("data")]
-    public ProjectsResponseDataProjectRelationshipsRootFolderData Data { get; set; }
-}
 
-public class ProjectsResponseDataProjectRelationshipsRootFolderData
-{
-    [JsonProperty("id")]
-    public string Id { get; set; }
-}

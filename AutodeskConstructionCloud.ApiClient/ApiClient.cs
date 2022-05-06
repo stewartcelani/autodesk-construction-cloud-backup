@@ -18,6 +18,38 @@ public class ApiClient : IApiClient
         Config = config;
     }
 
+    public async Task<Project> GetProject(string projectId, bool getRootFolderContents = false)
+    {
+        Config.Logger?.Trace("Top");
+        var projectEndpoint = $"https://developer.api.autodesk.com/project/v1/hubs/{Config.HubId}/projects/{projectId}";
+        const string moreDetailsUrl =
+            "https://forge.autodesk.com/en/docs/data/v2/reference/http/hubs-hub_id-projects-GET/";
+        var responseString = string.Empty;
+        await Config.RetryPolicy.ExecuteAsync(async () =>
+        {
+            Config.Logger?.Trace(
+                $"Top RetryPolicy, about to call EnsureAccessToken and then folderEndpoint: {projectEndpoint}");
+            await EnsureAccessToken();
+            HttpResponseMessage response = await Config.HttpClient.GetAsync(projectEndpoint);
+            responseString = await response.Content.ReadAsStringAsync();
+            HandleUnsuccessfulStatusCode(
+                responseString,
+                response,
+                moreDetailsUrl);
+        });
+        var projectResponse = JsonConvert.DeserializeObject<ProjectResponse>(responseString);
+        var project = new Project(this)
+        {
+            ProjectId = projectResponse.Data.Id, 
+            AccountId = Config.AccountId, 
+            Name = projectResponse.Data.Attributes.Name,
+            RootFolderId = projectResponse.Data.Relationships.RootFolder.Data.Id,
+            RootFolder = getRootFolderContents ? await GetFolder(projectResponse.Data.Id, projectResponse.Data.Relationships.RootFolder.Data.Id) : null
+        };
+        Config.Logger?.Debug($"Returning with project name {project.Name}");
+        return project;
+    }
+
     public async Task<List<Project>> GetProjects(bool getRootFolderContents = false)
     {
         Config.Logger?.Trace("Top");
@@ -52,7 +84,7 @@ public class ApiClient : IApiClient
         } while (true);
 
         var projects = new List<Project>();
-        foreach (ProjectsResponseProject project in projectsResponses.SelectMany(projectsResponse =>
+        foreach (ProjectResponseProject project in projectsResponses.SelectMany(projectsResponse =>
                      projectsResponse.Data))
         {
             projects.Add(new Project(this)
@@ -68,18 +100,8 @@ public class ApiClient : IApiClient
         Config.Logger?.Debug($"Returning {projects.Count} projects.");
         return projects;
     }
-    
-    public async Task<Folder> GetFolderWithContents(string projectId, string folderId)
-    {
-        Config.Logger?.Trace("Top");
-        Folder folder = await GetFolder(projectId, folderId);
-        await GetFolderContents(folder);
-        Config.Logger?.Debug($"Returning folder (id: {folder.FolderId}, name: {folder.Name}) with " +
-                             $"{folder.Files.Count} files and {folder.Subfolders.Count} subfolders");
-        return folder;
-    }
 
-    public async Task<Folder> GetFolder(string projectId, string folderId)
+    public async Task<Folder> GetFolder(string projectId, string folderId, bool getFolderContents = false)
     {
         Config.Logger?.Trace("Top");
         var folderEndpoint =
@@ -102,6 +124,10 @@ public class ApiClient : IApiClient
         var folderResponse = JsonConvert.DeserializeObject<FolderResponse>(responseString);
         string parentFolderId = folderResponse.Data.Relationships.Parent.Data.Id;
         Folder folder = MapFolderFromFolderContentsResponseData(projectId, parentFolderId, folderResponse.Data);
+        if (getFolderContents)
+        {
+            await GetFolderContents(folder);
+        }
         Config.Logger?.Debug($"Returning with folderId {folder.FolderId} and name {folder.Name}");
         return folder;
     }
@@ -251,7 +277,7 @@ public class ApiClient : IApiClient
 
     #region Authentication
 
-    public async Task EnsureAccessToken()
+    private async Task EnsureAccessToken()
     {
         Config.Logger?.Trace("Top");
         if (_accessTokenExpiresAt is null || _accessTokenExpiresAt < DateTime.Now)

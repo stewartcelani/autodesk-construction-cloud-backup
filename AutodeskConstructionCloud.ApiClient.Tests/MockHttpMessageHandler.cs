@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
@@ -12,7 +13,7 @@ public class MockHttpMessageHandler : HttpMessageHandler
 
     public string? Input { get; private set; }
     public int NumberOfCalls { get; private set; }
-
+    public List<HttpRequestMessage> HttpRequestMessages { get; set; } = new();
 
     public MockHttpMessageHandler(MockHttpMessageHandlerMapping messageHandlerMapping)
     {
@@ -31,6 +32,7 @@ public class MockHttpMessageHandler : HttpMessageHandler
         CancellationToken cancellationToken)
     {
         NumberOfCalls++;
+        HttpRequestMessages.Add(request);
 
         if (request.Content is not null)
         {
@@ -39,6 +41,7 @@ public class MockHttpMessageHandler : HttpMessageHandler
 
         MockHttpMessageHandlerMapping mapping = 
             _messageHandlerMappings.First(m => m.RequestUri == request.RequestUri);
+        
         return new HttpResponseMessage
         {
             RequestMessage = request,

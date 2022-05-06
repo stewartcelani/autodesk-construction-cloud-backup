@@ -49,7 +49,7 @@ public class ApiClientIntegrationTests
             .Create();
 
         // Act
-        Func<Task> act = async() => await sut.EnsureAccessToken();
+        Func<Task> act = async() => await sut.GetProjects();
         
         // Assert
         await act
@@ -81,7 +81,7 @@ public class ApiClientIntegrationTests
             .Create();
 
         // Act
-        Func<Task> act = async() => await sut.EnsureAccessToken();
+        Func<Task> act = async() => await sut.GetProjects();
         
         // Assert
         await act
@@ -108,7 +108,7 @@ public class ApiClientIntegrationTests
         AuthenticationHeaderValue? initialAuthHeader = sut.Config.HttpClient.DefaultRequestHeaders.Authorization;
 
         // Act
-        await sut.EnsureAccessToken();
+        await sut.GetProjects();
         
         // Assert
         initialAuthHeader.Should().BeNull();

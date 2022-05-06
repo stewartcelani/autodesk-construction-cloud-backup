@@ -9,7 +9,7 @@ public class ApiClientConfiguration : ApiClientOptions
     public string ClientId { get; }
     public string ClientSecret { get; }
     public string AccountId { get; }
-    public string HubId { get; }
+    public string HubId { get; set; }
     public AsyncRetryPolicy RetryPolicy { get; set; }
 
     public ApiClientConfiguration(string clientId, string clientSecret, string accountId)
@@ -18,8 +18,6 @@ public class ApiClientConfiguration : ApiClientOptions
         ClientSecret = clientSecret;
         AccountId = accountId;
         HubId = accountId;
-        if (ApiClientType.Equals(ApiClientType.BIM360))
-            HubId = $"b.{AccountId}";
         RetryPolicy = GetRetryPolicy(RetryAttempts, InitialRetryInSeconds);
     }
 

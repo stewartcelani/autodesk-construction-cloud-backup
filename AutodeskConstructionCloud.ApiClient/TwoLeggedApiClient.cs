@@ -50,6 +50,10 @@ public class TwoLeggedApiClient :
     public ApiClient Create()
     {
         _configuration ??= new ApiClientConfiguration(_clientId, _clientSecret, _accountId);
+        if (_configuration.ApiClientType.Equals(ApiClientType.BIM360))
+        {
+            _configuration.HubId = $"b.{_configuration.AccountId}";
+        }
         return new ApiClient(_configuration);
     }
 }

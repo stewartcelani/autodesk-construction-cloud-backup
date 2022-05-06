@@ -11,35 +11,24 @@ public class Project
         _apiClient = apiClient;
     }
     
+    /*
+     * These properties are mapped from Autodesk Api
+     */  
     public string ProjectId { get; set; }
     public string AccountId { get; set; }
     public string Name { get; set; }
-    
     public string RootFolderId { get; set; }
+    /*
+     * Properties not directly from the Autodesk Api are below
+     */
     public Folder? RootFolder { get; set; }
-    
-    public IEnumerable<Folder> SubfoldersRecursive
-    {
-        get
-        {
-            return RootFolder is null ? new List<Folder>() : RootFolder.Subfolders.RecursiveFlatten(x => x.Subfolders);
-        }
-    }
-    
-    public IEnumerable<File> FilesRecursive
-    {
-        get
-        {
-            return RootFolder is null ? new List<File>() : RootFolder.Files.Concat(SubfoldersRecursive.SelectMany(x => x.Files));
-        }
-    }
-
+    public IEnumerable<Folder> SubfoldersRecursive => RootFolder is null ? new List<Folder>() : RootFolder.Subfolders.RecursiveFlatten(x => x.Subfolders);
+    public IEnumerable<File> FilesRecursive => RootFolder is null ? new List<File>() : RootFolder.Files.Concat(SubfoldersRecursive.SelectMany(x => x.Files));
     public async Task GetContents()
     {
         RootFolder ??= await _apiClient.GetFolder(ProjectId, RootFolderId);
         await RootFolder.GetContents();
     }
-
     public async Task GetContentsRecursively()
     {
         RootFolder ??= await _apiClient.GetFolder(ProjectId, RootFolderId);

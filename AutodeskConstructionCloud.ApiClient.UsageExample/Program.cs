@@ -15,7 +15,7 @@ string clientId = SecretsManager.GetEnvironmentVariableOrDefaultTo("acc:clientid
 string clientSecret = SecretsManager.GetEnvironmentVariableOrDefaultTo("acc:clientsecret", "InvalidClientSecret");
 string accountId = SecretsManager.GetEnvironmentVariableOrDefaultTo("acc:accountid", "InvalidAccountId");
 
-ApiClient client = TwoLeggedApiClient
+ApiClient apiClient = TwoLeggedApiClient
     .Configure()
     .WithClientId(clientId)
     .AndClientSecret(clientSecret)
@@ -24,7 +24,7 @@ ApiClient client = TwoLeggedApiClient
     {
         options.Logger = new NLogLogger(new NLogLoggerConfiguration()
         {
-            LogLevel = LogLevel.Debug,
+            LogLevel = LogLevel.Trace,
             LogToConsole = true
         });
         options.RetryAttempts = 12;
@@ -32,26 +32,12 @@ ApiClient client = TwoLeggedApiClient
     })
     .Create();
 
-List<Project> projects = await client.GetProjects();
+//var projects = await apiClient.GetProjects();
+//Console.ReadLine();
 
-Project proj = projects.First(x => x.Name == "75132");
-await proj.GetContentsRecursively();
-
-
+Project sample = await apiClient.GetProject("b.62185181-412c-4c01-b45c-6fcd429e58b2");
+await sample.GetContentsRecursively();
 Console.ReadLine();
-
-
-Folder rootFolder = FakeData.GetFakeFolder(client);
-rootFolder.Subfolders = FakeData.GetFakeFolders(4, client);
-foreach (Folder folder in rootFolder.Subfolders)
-{
-    folder.Subfolders = FakeData.GetFakeFolders(4, client);
-}
-
-var flatten = rootFolder.Subfolders.RecursiveFlatten(x => x.Subfolders).ToList();
-
-Console.ReadLine();
-
 
 
 

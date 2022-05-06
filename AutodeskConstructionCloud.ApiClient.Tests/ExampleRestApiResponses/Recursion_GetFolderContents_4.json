@@ -1,0 +1,11 @@
+﻿{
+  "jsonapi": {
+    "version": "1.0"
+  },
+  "links": {
+    "self": {
+      "href": "https://developer.api.autodesk.com/data/v1/projects/b.62185181-412c-4c01-b45c-6fcd429e58b2/folders/urn:adsk.wipprod:fs.folder:co.qh2HWoteQ9iymYm7DjbYvg/contents"
+    }
+  },
+  "data": []
+}
