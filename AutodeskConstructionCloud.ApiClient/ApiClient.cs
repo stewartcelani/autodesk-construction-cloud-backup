@@ -18,6 +18,59 @@ public class ApiClient : IApiClient
         Config = config;
     }
 
+    public void CreateDirectory(Folder folder, string rootDirectory)
+    {
+        if (folder.DirectoryInfo is not null) return;
+        string path = Path.Combine(rootDirectory, folder.GetPath()[1..]);
+        folder.DirectoryInfo = Directory.CreateDirectory(path);
+    }
+
+    public void CreateDirectories(IEnumerable<Folder> folders, string rootDirectory)
+    {
+        foreach (Folder folder in folders)
+        {
+            CreateDirectory(folder, rootDirectory);
+        }
+    }
+
+    public async Task<FileInfo> DownloadFile(
+        File file, string rootDirectory, CancellationToken ct = default)
+    {
+        CreateDirectory(file.ParentFolder, rootDirectory);
+        string downloadPath = Path.Combine(rootDirectory, file.GetPath()[1..]);
+        return await Config.RetryPolicy.ExecuteAsync(async () =>
+        {
+            file.DownloadAttempts++;
+            await using Stream stream = await Config.HttpClient.GetStreamAsync(file.DownloadUrl, ct);
+            await using FileStream fileStream = new(downloadPath, FileMode.Create);
+            await stream.CopyToAsync(fileStream, ct);
+            file.FileInfo = new FileInfo(downloadPath);
+            file.FileSizeOnDiskInMb = (decimal)Math.Round((((file.FileInfo.Length) / 1024f) / 1024f), 2);
+            Config.Logger?.Info($"{file.FileInfo.FullName} ({file.FileSizeOnDiskInMb} MB)");
+            return file.FileInfo;
+        });
+    }
+
+    public async Task<List<FileInfo>> DownloadFiles(
+        IEnumerable<File> fileList, string rootDirectory, CancellationToken ct = default)
+    {
+        List<FileInfo> fileInfoList = new();
+
+        var parallelOptions = new ParallelOptions()
+        {
+            CancellationToken = ct,
+            MaxDegreeOfParallelism = Config.MaxDegreeOfParallelism,
+        };
+
+        await Parallel.ForEachAsync(fileList, parallelOptions, async (file, ctx) =>
+        {
+            FileInfo fileInfo = await DownloadFile(file, rootDirectory, ctx);
+            fileInfoList.Add(fileInfo);
+        });
+
+        return fileInfoList;
+    }
+
     public async Task<Project> GetProject(string projectId, bool getRootFolderContents = false)
     {
         Config.Logger?.Trace("Top");
@@ -40,11 +93,13 @@ public class ApiClient : IApiClient
         var projectResponse = JsonConvert.DeserializeObject<ProjectResponse>(responseString);
         var project = new Project(this)
         {
-            ProjectId = projectResponse.Data.Id, 
-            AccountId = Config.AccountId, 
+            ProjectId = projectResponse.Data.Id,
+            AccountId = Config.AccountId,
             Name = projectResponse.Data.Attributes.Name,
             RootFolderId = projectResponse.Data.Relationships.RootFolder.Data.Id,
-            RootFolder = getRootFolderContents ? await GetFolder(projectResponse.Data.Id, projectResponse.Data.Relationships.RootFolder.Data.Id) : null
+            RootFolder = getRootFolderContents
+                ? await GetFolder(projectResponse.Data.Id, projectResponse.Data.Relationships.RootFolder.Data.Id)
+                : null
         };
         Config.Logger?.Debug($"Returning with project name {project.Name}");
         return project;
@@ -89,11 +144,13 @@ public class ApiClient : IApiClient
         {
             projects.Add(new Project(this)
             {
-                ProjectId = project.Id, 
-                AccountId = Config.AccountId, 
+                ProjectId = project.Id,
+                AccountId = Config.AccountId,
                 Name = project.Attributes.Name,
                 RootFolderId = project.Relationships.RootFolder.Data.Id,
-                RootFolder = getRootFolderContents ? await GetFolder(project.Id, project.Relationships.RootFolder.Data.Id) : null
+                RootFolder = getRootFolderContents
+                    ? await GetFolder(project.Id, project.Relationships.RootFolder.Data.Id)
+                    : null
             });
         }
 
@@ -128,6 +185,7 @@ public class ApiClient : IApiClient
         {
             await GetFolderContents(folder);
         }
+
         Config.Logger?.Debug($"Returning with folderId {folder.FolderId} and name {folder.Name}");
         return folder;
     }
@@ -144,7 +202,7 @@ public class ApiClient : IApiClient
         Config.Logger?.Debug($"Returning folder (id: {folder.FolderId}, name: {folder.Name}) with " +
                              $"{folder.Files.Count} files and {folder.Subfolders.Count} subfolders");
     }
-    
+
     public async Task GetFolderContents(Folder folder)
     {
         Config.Logger?.Trace("Top");
@@ -192,7 +250,7 @@ public class ApiClient : IApiClient
             where data.Type.Equals("folders")
             select MapFolderFromFolderContentsResponseData(folder, data)).ToList();
 
-        Config.Logger?.Debug($"Returning with {folder.Files.Count} files and {folder.Subfolders.Count} folders");
+        Config.Logger?.Trace($"Returning with {folder.Files.Count} files and {folder.Subfolders.Count} folders");
     }
 
     private Folder MapFolderFromFolderContentsResponseData(string projectId, string parentFolderId,

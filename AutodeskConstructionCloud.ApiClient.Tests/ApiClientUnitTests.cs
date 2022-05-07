@@ -7,9 +7,11 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using AutodeskConstructionCloud.ApiClient.Entities;
+using Bogus.DataSets;
 using Xunit;
 using FluentAssertions;
 using Library.Logger;
+using File = AutodeskConstructionCloud.ApiClient.Entities.File;
 
 // ReSharper disable AsyncVoidLambda
 
@@ -39,30 +41,11 @@ public class ApiClientUnitTests
         sut.Config.ClientSecret.Should().Be(clientSecret);
         sut.Config.AccountId.Should().Be(accountId);
         sut.Config.Logger.Should().BeNull();
-        sut.Config.RetryAttempts.Should().Be(4);
+        sut.Config.MaxDegreeOfParallelism.Should().Be(8);
+        sut.Config.RetryAttempts.Should().Be(12);
         sut.Config.InitialRetryInSeconds.Should().Be(2);
         sut.Config.HttpClient.BaseAddress.Should().BeNull();
         sut.Config.Logger.Should().BeNull();
-    }
-
-    [Fact]
-    public void Building_WithoutOptions_Should_NotThrow()
-    {
-        // Arrange
-        const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
-        const string clientSecret = "wE3GFhuIsGJEi3d4";
-        const string accountId = "f33e018a-d1f5-4ef3-ae67-606de6aeed87";
-
-        // Act
-        Action act = () => TwoLeggedApiClient
-            .Configure()
-            .WithClientId(clientId)
-            .AndClientSecret(clientSecret)
-            .ForAccount(accountId)
-            .Create();
-
-        // Assert
-        act.Should().NotThrow();
     }
 
     [Fact]
@@ -93,6 +76,7 @@ public class ApiClientUnitTests
                 options.Logger = logger;
                 options.RetryAttempts = 20;
                 options.InitialRetryInSeconds = 8;
+                options.MaxDegreeOfParallelism = 4;
             })
             .Create();
 
@@ -107,41 +91,7 @@ public class ApiClientUnitTests
         sut.Config.Logger.Config.LogToConsole.Should().Be(false);
         sut.Config.RetryAttempts.Should().Be(20);
         sut.Config.InitialRetryInSeconds.Should().Be(8);
-    }
-
-    [Fact]
-    public void Building_WithOptions_Should_NotThrow()
-    {
-        // Arrange
-        const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
-        const string clientSecret = "wE3GFhuIsGJEi3d4";
-        const string accountId = "f33e018a-d1f5-4ef3-ae67-606de6aeed87";
-        ILogger logger = new NLogLogger(new NLogLoggerConfiguration()
-        {
-            LogLevel = LogLevel.Fatal,
-            LogToConsole = false
-        });
-        var httpClient = new HttpClient();
-        var baseAddress = new Uri("https://www.test.com");
-        httpClient.BaseAddress = baseAddress;
-
-        // Act
-        Action act = () => TwoLeggedApiClient
-            .Configure()
-            .WithClientId(clientId)
-            .AndClientSecret(clientSecret)
-            .ForAccount(accountId)
-            .WithOptions(options =>
-            {
-                options.HttpClient = httpClient;
-                options.Logger = logger;
-                options.RetryAttempts = 20;
-                options.InitialRetryInSeconds = 8;
-            })
-            .Create();
-
-        // Assert
-        act.Should().NotThrow();
+        sut.Config.MaxDegreeOfParallelism.Should().Be(4);
     }
 
     [Fact]
@@ -1128,5 +1078,391 @@ public class ApiClientUnitTests
         folder.SubfoldersRecursive.Count().Should().Be(4);
         folder.FilesRecursive.Count().Should().Be(12);
         messageHandler.NumberOfCalls.Should().Be(7);
+    }
+    
+    [Fact]
+    public async Task GetFolder_GetContents_Should_MapFolderPropertiesAppropriately()
+    {
+        // Arrange
+        const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
+        const string clientSecret = "wE3GFhuIsGJEi3d4";
+        const string accountId = "48a4d1eb-a370-42fe-89c9-4dd9e2ad9d41";
+        const string projectId = "b.62185181-412c-4c01-b45c-6fcd429e58b2";
+        const string folderId = "urn:adsk.wipprod:fs.folder:co.9x1ON-8QSve2cJA6lAiegQ";
+        const string folderEndpoint = $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/{folderId}";
+        var messageHandlerMappings = new List<MockHttpMessageHandlerMapping>
+        {
+            new()
+            {
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                Response =
+                    await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            },
+            new()
+            {
+                RequestUri = new Uri(folderEndpoint),
+                Response = await new StreamReader(@"ExampleRestApiResponses\Recursion_GetFolder_1.json")
+                    .ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            },
+            new()
+            {
+                RequestUri = new Uri($"{folderEndpoint}/contents"),
+                Response = await new StreamReader(@"ExampleRestApiResponses\Recursion_GetFolderContents_2.json")
+                    .ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            }
+        };
+        var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
+        var httpClient = new HttpClient(messageHandler);
+        ApiClient sut = TwoLeggedApiClient
+            .Configure()
+            .WithClientId(clientId)
+            .AndClientSecret(clientSecret)
+            .ForAccount(accountId)
+            .WithOptions(options =>
+            {
+                options.HttpClient = httpClient;
+                options.RetryAttempts = 1;
+                options.InitialRetryInSeconds = 1;
+            })
+            .Create();
+        Folder folder = await sut.GetFolder(projectId, folderId);
+
+        // Act
+        await folder.GetContents();
+
+        // Assert
+        messageHandler.NumberOfCalls.Should().Be(3);
+        folder.Should().BeOfType<Folder>();
+        folder.CreateTime.Should().BeBefore(DateTime.Now);
+        folder.CreateUserId.Should().Be("58L2KZX7KE8FP5A4");
+        folder.Created.Should().Be(false);
+        folder.DirectoryInfo.Should().BeNull();
+        folder.DisplayName.Should().Be("Recursion");
+        folder.Files.Count.Should().Be(2);
+        folder.FilesRecursive.Count().Should().Be(2);
+        folder.FolderId.Should().Be(folderId);
+        folder.Hidden.Should().BeFalse();
+        folder.IsEmpty.Should().BeFalse();
+        folder.IsNotEmpty.Should().BeTrue();
+        folder.IsRootFolder.Should().BeFalse();
+        folder.LastModifiedTime.Should().BeBefore(DateTime.Now);
+        folder.LastModifiedTimeRollup.Should().BeBefore(DateTime.Now);
+        folder.LastModifiedUserId.Should().Be("58L2KZX7KE8FP5A4");
+        folder.LastModifiedUserName.Should().Be("Stewart Celani");
+        folder.Name.Should().Be("Recursion");
+        folder.ObjectCount.Should().Be(4);
+        folder.ParentFolder.Should().BeNull();
+        folder.ParentFolderId.Should().Be("urn:adsk.wipprod:fs.folder:co.5WdH8YwrSgWYSp9dA3E8Nw");
+        folder.ProjectId.Should().Be("b.62185181-412c-4c01-b45c-6fcd429e58b2");
+        folder.Subfolders.Count.Should().Be(2);
+        folder.SubfoldersRecursive.Count().Should().Be(2);
+        folder.Type.Should().Be("folders");
+    }
+    
+    [Fact]
+    public async Task GetFolder_GetContents_Should_MapSubfolderPropertiesAppropriately()
+    {
+        // Arrange
+        const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
+        const string clientSecret = "wE3GFhuIsGJEi3d4";
+        const string accountId = "48a4d1eb-a370-42fe-89c9-4dd9e2ad9d41";
+        const string projectId = "b.62185181-412c-4c01-b45c-6fcd429e58b2";
+        const string folderId = "urn:adsk.wipprod:fs.folder:co.9x1ON-8QSve2cJA6lAiegQ";
+        const string folderEndpoint = $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/{folderId}";
+        var messageHandlerMappings = new List<MockHttpMessageHandlerMapping>
+        {
+            new()
+            {
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                Response =
+                    await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            },
+            new()
+            {
+                RequestUri = new Uri(folderEndpoint),
+                Response = await new StreamReader(@"ExampleRestApiResponses\Recursion_GetFolder_1.json")
+                    .ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            },
+            new()
+            {
+                RequestUri = new Uri($"{folderEndpoint}/contents"),
+                Response = await new StreamReader(@"ExampleRestApiResponses\Recursion_GetFolderContents_2.json")
+                    .ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            }
+        };
+        var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
+        var httpClient = new HttpClient(messageHandler);
+        ApiClient sut = TwoLeggedApiClient
+            .Configure()
+            .WithClientId(clientId)
+            .AndClientSecret(clientSecret)
+            .ForAccount(accountId)
+            .WithOptions(options =>
+            {
+                options.HttpClient = httpClient;
+                options.RetryAttempts = 1;
+                options.InitialRetryInSeconds = 1;
+            })
+            .Create();
+        Folder folder = await sut.GetFolder(projectId, folderId);
+
+        // Act
+        await folder.GetContents();
+        Folder subfolder = folder.Subfolders[0];
+
+        // Assert
+        messageHandler.NumberOfCalls.Should().Be(3);
+        subfolder.Should().BeOfType<Folder>();
+        subfolder.CreateTime.Should().BeBefore(DateTime.Now);
+        subfolder.CreateUserId.Should().Be("58L2KZX7KE8FP5A4");
+        subfolder.Created.Should().Be(false);
+        subfolder.DirectoryInfo.Should().BeNull();
+        subfolder.DisplayName.Should().Be("1");
+        subfolder.Files.Count.Should().Be(0);
+        subfolder.FilesRecursive.Count().Should().Be(0);
+        subfolder.FolderId.Should().Be("urn:adsk.wipprod:fs.folder:co.-Cj9GOznROaMrLBtjvWzdg");
+        subfolder.Hidden.Should().BeFalse();
+        subfolder.IsEmpty.Should().BeTrue();
+        subfolder.IsNotEmpty.Should().BeFalse();
+        subfolder.IsRootFolder.Should().BeFalse();
+        subfolder.LastModifiedTime.Should().BeBefore(DateTime.Now);
+        subfolder.LastModifiedTimeRollup.Should().BeBefore(DateTime.Now);
+        subfolder.LastModifiedUserId.Should().Be("58L2KZX7KE8FP5A4");
+        subfolder.LastModifiedUserName.Should().Be("Stewart Celani");
+        subfolder.Name.Should().Be("1");
+        subfolder.ObjectCount.Should().Be(7);
+        subfolder.ParentFolder.Should().Be(folder);
+        subfolder.ParentFolderId.Should().Be(folder.FolderId);
+        subfolder.ProjectId.Should().Be("b.62185181-412c-4c01-b45c-6fcd429e58b2");
+        subfolder.Subfolders.Count.Should().Be(0);
+        subfolder.SubfoldersRecursive.Count().Should().Be(0);
+        subfolder.Type.Should().Be("folders");
+    }
+    
+    [Fact]
+    public async Task GetFolder_GetContents_Should_MapFilePropertiesAppropriately()
+    {
+        // Arrange
+        const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
+        const string clientSecret = "wE3GFhuIsGJEi3d4";
+        const string accountId = "48a4d1eb-a370-42fe-89c9-4dd9e2ad9d41";
+        const string projectId = "b.62185181-412c-4c01-b45c-6fcd429e58b2";
+        const string folderId = "urn:adsk.wipprod:fs.folder:co.9x1ON-8QSve2cJA6lAiegQ";
+        const string folderEndpoint = $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/{folderId}";
+        var messageHandlerMappings = new List<MockHttpMessageHandlerMapping>
+        {
+            new()
+            {
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                Response =
+                    await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            },
+            new()
+            {
+                RequestUri = new Uri(folderEndpoint),
+                Response = await new StreamReader(@"ExampleRestApiResponses\Recursion_GetFolder_1.json")
+                    .ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            },
+            new()
+            {
+                RequestUri = new Uri($"{folderEndpoint}/contents"),
+                Response = await new StreamReader(@"ExampleRestApiResponses\Recursion_GetFolderContents_2.json")
+                    .ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            }
+        };
+        var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
+        var httpClient = new HttpClient(messageHandler);
+        ApiClient sut = TwoLeggedApiClient
+            .Configure()
+            .WithClientId(clientId)
+            .AndClientSecret(clientSecret)
+            .ForAccount(accountId)
+            .WithOptions(options =>
+            {
+                options.HttpClient = httpClient;
+                options.RetryAttempts = 1;
+                options.InitialRetryInSeconds = 1;
+            })
+            .Create();
+        Folder folder = await sut.GetFolder(projectId, folderId);
+
+        // Act
+        await folder.GetContents();
+        File file = folder.Files[0];
+
+        // Assert
+        messageHandler.NumberOfCalls.Should().Be(3);
+        file.Should().BeOfType<File>();
+        file.CreateTime.Should().BeBefore(DateTime.Now);
+        file.CreateUserId.Should().Be("5E4FQ5CA6P9L");
+        file.CreateUserName.Should().Be("ACC Sample Project");
+        file.DisplayName.Should().Be("A001 - ARCHITECTURAL - GRAPHIC SYMBOLS & ABBREVIATIONS.pdf");
+        file.DownloadAttempts.Should().Be(0);
+        file.DownloadUrl.Should()
+            .Be(
+                "https://developer.api.autodesk.com/oss/v2/buckets/wip.dm.prod/objects/cc5f57d7-f3de-4343-a427-af591339746c.pdf?scopes=b360project.62185181-412c-4c01-b45c-6fcd429e58b2,O2tenant.27638224");
+        file.Downloaded.Should().BeFalse();
+        file.FileId.Should().Be("urn:adsk.wipprod:fs.file:vf.HJ4s0IyyXg-6_eYcUmDV8Q?version=1");
+        file.FileInfo.Should().BeNull();
+        file.FileType.Should().Be("pdf");
+        file.Hidden.Should().BeFalse();
+        file.LastModifiedTime.Should().BeBefore(DateTime.Now);
+        file.LastModifiedUserId.Should().Be("5E4FQ5CA6P9L");
+        file.LastModifiedUserName.Should().Be("ACC Sample Project");
+        file.Name.Should().Be("A001 - ARCHITECTURAL - GRAPHIC SYMBOLS & ABBREVIATIONS.pdf");
+        file.ParentFolder.Should().Be(folder);
+        file.ProjectId.Should().Be("b.62185181-412c-4c01-b45c-6fcd429e58b2");
+        file.Reserved.Should().BeFalse();
+        file.ReservedTime.Should().BeBefore(DateTime.Now);
+        file.ReservedUserId.Should().BeNull();
+        file.ReservedUserName.Should().BeNull();
+        file.StorageSize.Should().Be(78750);
+        file.StorageSizeInMb.Should().Be(0.08m);
+        file.Type.Should().Be("versions");
+        file.VersionNumber.Should().Be(1);
+    }
+    
+    [Fact]
+    public async Task Folder_GetPath_Should_ReturnAppropriatePath()
+    {
+        // Arrange
+        const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
+        const string clientSecret = "wE3GFhuIsGJEi3d4";
+        const string accountId = "48a4d1eb-a370-42fe-89c9-4dd9e2ad9d41";
+        const string projectId = "b.62185181-412c-4c01-b45c-6fcd429e58b2";
+        const string folderId = "urn:adsk.wipprod:fs.folder:co.9x1ON-8QSve2cJA6lAiegQ";
+        const string folderEndpoint = $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/{folderId}";
+        var messageHandlerMappings = new List<MockHttpMessageHandlerMapping>
+        {
+            new()
+            {
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                Response =
+                    await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            },
+            new()
+            {
+                RequestUri = new Uri(folderEndpoint),
+                Response = await new StreamReader(@"ExampleRestApiResponses\Recursion_GetFolder_1.json")
+                    .ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            },
+            new()
+            {
+                RequestUri = new Uri($"{folderEndpoint}/contents"),
+                Response = await new StreamReader(@"ExampleRestApiResponses\Recursion_GetFolderContents_2.json")
+                    .ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            }
+        };
+        var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
+        var httpClient = new HttpClient(messageHandler);
+        ApiClient sut = TwoLeggedApiClient
+            .Configure()
+            .WithClientId(clientId)
+            .AndClientSecret(clientSecret)
+            .ForAccount(accountId)
+            .WithOptions(options =>
+            {
+                options.HttpClient = httpClient;
+                options.RetryAttempts = 1;
+                options.InitialRetryInSeconds = 1;
+            })
+            .Create();
+        Folder folder = await sut.GetFolder(projectId, folderId);
+        await folder.GetContents();
+        Folder subfolder = folder.Subfolders[0];
+
+        // Act
+        string folderPath = folder.GetPath();
+        string subfolderPath = subfolder.GetPath();
+        
+        // Assert
+        messageHandler.NumberOfCalls.Should().Be(3);
+        folderPath.Should().Be(@"\Recursion");
+        subfolderPath.Should().Be(@"\Recursion\1");
+    }
+    
+    [Fact]
+    public async Task File_GetPath_Should_ReturnAppropriatePath()
+    {
+        // Arrange
+        const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
+        const string clientSecret = "wE3GFhuIsGJEi3d4";
+        const string accountId = "48a4d1eb-a370-42fe-89c9-4dd9e2ad9d41";
+        const string projectId = "b.62185181-412c-4c01-b45c-6fcd429e58b2";
+        const string folderId = "urn:adsk.wipprod:fs.folder:co.9x1ON-8QSve2cJA6lAiegQ";
+        const string folderEndpoint = $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/{folderId}";
+        var messageHandlerMappings = new List<MockHttpMessageHandlerMapping>
+        {
+            new()
+            {
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                Response =
+                    await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            },
+            new()
+            {
+                RequestUri = new Uri(folderEndpoint),
+                Response = await new StreamReader(@"ExampleRestApiResponses\Recursion_GetFolder_1.json")
+                    .ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            },
+            new()
+            {
+                RequestUri = new Uri($"{folderEndpoint}/contents"),
+                Response = await new StreamReader(@"ExampleRestApiResponses\Recursion_GetFolderContents_2.json")
+                    .ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            },
+            new()
+            {
+                RequestUri = new Uri($"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/urn:adsk.wipprod:fs.folder:co.-Cj9GOznROaMrLBtjvWzdg/contents"),
+                Response = await new StreamReader(@"ExampleRestApiResponses\Recursion_GetFolderContents_3.json")
+                    .ReadToEndAsync(),
+                StatusCode = HttpStatusCode.OK
+            },
+        };
+        var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
+        var httpClient = new HttpClient(messageHandler);
+        ApiClient sut = TwoLeggedApiClient
+            .Configure()
+            .WithClientId(clientId)
+            .AndClientSecret(clientSecret)
+            .ForAccount(accountId)
+            .WithOptions(options =>
+            {
+                options.HttpClient = httpClient;
+                options.RetryAttempts = 1;
+                options.InitialRetryInSeconds = 1;
+            })
+            .Create();
+        Folder folder = await sut.GetFolder(projectId, folderId);
+        await folder.GetContents();
+        Folder subfolder = folder.Subfolders[0];
+        await subfolder.GetContents();
+        File folderFile = folder.Files[0];
+        File subfolderFile = subfolder.Files[0];
+
+
+        // Act
+        string folderFilePath = folderFile.GetPath();
+        string subfolderFilePath = subfolderFile.GetPath();
+        
+        // Assert
+        messageHandler.NumberOfCalls.Should().Be(4);
+        folderFilePath.Should().Be(@"\Recursion\A001 - ARCHITECTURAL - GRAPHIC SYMBOLS & ABBREVIATIONS.pdf");
+        subfolderFilePath.Should().Be(@"\Recursion\1\A505 - OFFICE - ROOFING DETAILS.pdf");
     }
 }

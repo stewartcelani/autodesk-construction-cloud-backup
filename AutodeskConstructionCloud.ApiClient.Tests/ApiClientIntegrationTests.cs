@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -9,6 +10,8 @@ using AutodeskConstructionCloud.ApiClient.Entities;
 using Xunit;
 using FluentAssertions;
 using Library.SecretsManager;
+using NSubstitute.Extensions;
+
 // ReSharper disable AsyncVoidLambda
 
 
@@ -22,9 +25,9 @@ public class ApiClientIntegrationTests
 
     public ApiClientIntegrationTests()
     {
-        _clientId = SecretsManager.GetEnvironmentVariableOrDefaultTo("acc:clientid", "InvalidClientId");
-        _clientSecret = SecretsManager.GetEnvironmentVariableOrDefaultTo("acc:clientsecret", "InvalidSecret");
-        _accountId = SecretsManager.GetEnvironmentVariableOrDefaultTo("acc:accountid", "InvalidAcountId");
+        _clientId = SecretsManager.GetEnvironmentVariable("acc:clientid");
+        _clientSecret = SecretsManager.GetEnvironmentVariable("acc:clientsecret");
+        _accountId = SecretsManager.GetEnvironmentVariable("acc:accountid");
     }
 
     [Fact]
@@ -62,7 +65,7 @@ public class ApiClientIntegrationTests
     public async Task GetAccessToken_InvalidClientSecret_Should_Throw_401Unauthorized()
     {
         // Arrange
-        string clientId = SecretsManager.GetEnvironmentVariableOrDefaultTo("acc:clientid", "InvalidClientId");
+        string clientId = _clientId;
         const string clientSecret = "InvalidClientSecret";
         const string accountId = "IrrelevantToTest";
         const string unauthorizedResponse = 
@@ -163,5 +166,106 @@ public class ApiClientIntegrationTests
         projects.Count.Should().BeGreaterOrEqualTo(1);
         projects.All(x => x.RootFolder != null).Should().BeTrue();
     }
+    
+    [Fact]
+    public async Task Project_DownloadContentsRecursively_Should_DownloadContentsRecursively()
+    {
+        // Arrange
+        string projectId = SecretsManager.GetEnvironmentVariable(
+            "acc:integrationtest:Project_DownloadContentsRecursively_Should_DownloadContentsRecursively:projectId");
+        ApiClient apiClient = TwoLeggedApiClient
+            .Configure()
+            .WithClientId(_clientId)
+            .AndClientSecret(_clientSecret)
+            .ForAccount(_accountId)
+            .WithOptions(options =>
+            {
+                options.RetryAttempts = 12;
+                options.InitialRetryInSeconds = 2;
+            })
+            .Create();
+        string rootBackupDirectory = Path.GetTempPath();
+        Project sut = await apiClient.GetProject(projectId);
+        string rootProjectDirectory = Path.Combine(rootBackupDirectory, Guid.NewGuid().ToString(), sut.Name);
+        await sut.GetContentsRecursively();
+
+        // Act
+        await sut.DownloadContentsRecursively(rootProjectDirectory);
+        
+        // Assert
+        sut.FilesRecursive.All(x => x.Downloaded).Should().BeTrue();
+        sut.FilesRecursive.Count(x => x.Downloaded).Should().BeGreaterOrEqualTo(1);
+        sut.SubfoldersRecursive.All(x => x.Created).Should().BeTrue();
+        sut.SubfoldersRecursive.Count(x => x.Created).Should().BeGreaterOrEqualTo(1);
+    }
+    
+    [Fact]
+    public async Task Folder_DownloadContentsRecursively_Should_DownloadContentsRecursively()
+    {
+        // Arrange
+        string projectId = SecretsManager.GetEnvironmentVariable(
+            "acc:integrationtest:Project_DownloadContentsRecursively_Should_DownloadContentsRecursively:projectId");
+        ApiClient apiClient = TwoLeggedApiClient
+            .Configure()
+            .WithClientId(_clientId)
+            .AndClientSecret(_clientSecret)
+            .ForAccount(_accountId)
+            .WithOptions(options =>
+            {
+                options.RetryAttempts = 12;
+                options.InitialRetryInSeconds = 2;
+            })
+            .Create();
+        string rootBackupDirectory = Path.GetTempPath();
+        Project project = await apiClient.GetProject(projectId);
+        string rootProjectDirectory = Path.Combine(rootBackupDirectory, Guid.NewGuid().ToString(), project.Name);
+        await project.GetContentsRecursively();
+        Folder sut = project.RootFolder;
+        
+        // Act
+        await sut.DownloadContentsRecursively(rootProjectDirectory);
+        
+        // Assert
+        sut.FilesRecursive.All(x => x.Downloaded).Should().BeTrue();
+        sut.FilesRecursive.Count(x => x.Downloaded).Should().BeGreaterOrEqualTo(1);
+        sut.SubfoldersRecursive.All(x => x.Created).Should().BeTrue();
+        sut.SubfoldersRecursive.Count(x => x.Created).Should().BeGreaterOrEqualTo(1);
+    }
+    
+    [Fact]
+    public async Task Folder_DownloadContents_Should_DownloadContents()
+    {
+        // Arrange
+        string projectId = SecretsManager.GetEnvironmentVariable(
+            "acc:integrationtest:Project_DownloadContentsRecursively_Should_DownloadContentsRecursively:projectId");
+        string folderId =
+            SecretsManager.GetEnvironmentVariable(
+                "acc:integrationtest:Folder_DownloadContents_Should_DownloadContents:folderId");
+        ApiClient apiClient = TwoLeggedApiClient
+            .Configure()
+            .WithClientId(_clientId)
+            .AndClientSecret(_clientSecret)
+            .ForAccount(_accountId)
+            .WithOptions(options =>
+            {
+                options.RetryAttempts = 12;
+                options.InitialRetryInSeconds = 2;
+            })
+            .Create();
+        string rootBackupDirectory = Path.GetTempPath();
+        Folder sut = await apiClient.GetFolder(projectId, folderId, true);
+        int sutFiles = sut.Files.Count;
+        string downloadPath = Path.Combine(rootBackupDirectory, Guid.NewGuid().ToString(), sut.Name);
+        
+        // Act
+        await sut.DownloadContents(downloadPath);
+        
+        // Assert
+        sut.FilesRecursive.All(x => x.Downloaded).Should().BeTrue();
+        sut.FilesRecursive.Count(x => x.Downloaded).Should().Be(sutFiles);
+        sut.Created.Should().BeTrue();
+    }
+    
+    
 
 }

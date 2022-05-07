@@ -9,9 +9,8 @@ public class ApiClientOptions
     
     public ApiClientType ApiClientType { get; set; } = ApiClientType.BIM360;
     
-    /*
-     * Each retry attempt is RetryAttempt * InitialRetryInSeconds
-     */
-    public int RetryAttempts { get; set; } = 4;
+    
+    public int RetryAttempts { get; set; } = 12; // Each retry attempt is RetryAttempt# * InitialRetryInSeconds
     public int InitialRetryInSeconds { get; set; } = 2;
+    public int MaxDegreeOfParallelism = 8; // Used by DownloadFiles Parallel.ForEachAsync
 }

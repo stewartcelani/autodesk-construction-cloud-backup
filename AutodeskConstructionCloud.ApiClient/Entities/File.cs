@@ -4,7 +4,7 @@ public class File
 {
     /*
      * These properties are mapped from Autodesk Api
-     */  
+     */
     public string FileId { get; set; }
     public string Name { get; set; }
     public string FileType { get; set; }
@@ -22,16 +22,21 @@ public class File
     public string DownloadUrl { get; set; }
     public bool Reserved { get; set; }
     public DateTime ReservedTime { get; set; }
-    public string ReservedUserId { get; set; }
-    public string ReservedUserName { get; set; }
+    public string? ReservedUserId { get; set; }
+
+    public string? ReservedUserName { get; set; }
+
     /*
      * Properties not directly from the Autodesk Api are below
      */
+    public decimal StorageSizeInMb => (decimal)Math.Round((((StorageSize) / 1024f) / 1024f), 2);
     public Folder ParentFolder { get; set; }
     public string ProjectId { get; set; }
     public int DownloadAttempts { get; set; } = 0;
     public FileInfo? FileInfo { get; set; }
     public bool Downloaded => FileInfo != null;
+    public decimal? FileSizeOnDiskInMb { get; set; }
+
     public string GetPath(string delimiter = @"\")
     {
         return $"{ParentFolder.GetPath(delimiter)}{delimiter}{Name}";

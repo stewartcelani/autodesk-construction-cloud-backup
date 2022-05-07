@@ -45,17 +45,14 @@ public class Folder
     public bool Created => DirectoryInfo != null;
     public IEnumerable<Folder> SubfoldersRecursive => Subfolders.RecursiveFlatten(x => x.Subfolders);
     public IEnumerable<File> FilesRecursive => Files.Concat(SubfoldersRecursive.SelectMany(x => x.Files));
-
     public async Task GetContents()
     {
         await _apiClient.GetFolderContents(this);
     }
-
     public async Task GetContentsRecursively()
     {
         await _apiClient.GetFolderContentsRecursively(this);
     }
-
     public string GetPath(string? rootFolderId = null, StringBuilder? sb = null, string delimiter = @"\")
     {
         var thisFolderPath = $"{delimiter}{Name}";
@@ -71,11 +68,18 @@ public class Folder
 
         if (FolderId == rootFolderId || ParentFolder is null)
         {
-            //sb.Insert(0, delimiter);
             return sb.ToString();
         }
 
         return ParentFolder.GetPath(rootFolderId, sb);
     }
-    
+    public async Task DownloadContents(string rootDirectory, CancellationToken ct = default)
+    {
+        await _apiClient.DownloadFiles(Files, rootDirectory, ct);
+    }
+    public async Task DownloadContentsRecursively(string rootDirectory, CancellationToken ct = default)
+    {
+        _apiClient.CreateDirectories(SubfoldersRecursive, rootDirectory);
+        await _apiClient.DownloadFiles(FilesRecursive, rootDirectory, ct);
+    }
 }
