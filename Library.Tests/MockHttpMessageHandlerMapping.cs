@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Net;
 
-namespace AutodeskConstructionCloud.ApiClient.Tests;
+namespace AutodeskConstructionCloud.ApiClient.UnitTests;
 
 public class MockHttpMessageHandlerMapping
 {

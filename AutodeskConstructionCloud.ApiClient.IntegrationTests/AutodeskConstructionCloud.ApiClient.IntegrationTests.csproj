@@ -8,10 +8,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Bogus" Version="34.0.2" />
         <PackageReference Include="FluentAssertions" Version="6.6.0" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.11.0" />
-        <PackageReference Include="NSubstitute" Version="4.3.0" />
         <PackageReference Include="xunit" Version="2.4.1" />
         <PackageReference Include="xunit.runner.visualstudio" Version="2.4.3">
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -25,13 +23,8 @@
 
     <ItemGroup>
       <ProjectReference Include="..\AutodeskConstructionCloud.ApiClient\AutodeskConstructionCloud.ApiClient.csproj" />
+      <ProjectReference Include="..\Library.Logger.Tests\Library.Logger.Tests.csproj" />
       <ProjectReference Include="..\Library.SecretsManager\Library.SecretsManager.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <Content Include="ExampleRestApiResponses\*.*">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </Content>
     </ItemGroup>
 
 </Project>

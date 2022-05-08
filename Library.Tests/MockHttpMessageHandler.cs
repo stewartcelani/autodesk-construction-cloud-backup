@@ -5,7 +5,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace AutodeskConstructionCloud.ApiClient.Tests;
+namespace AutodeskConstructionCloud.ApiClient.UnitTests;
 
 public class MockHttpMessageHandler : HttpMessageHandler
 {

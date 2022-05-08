@@ -1,14 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Library.FileDownloader", "Library.FileDownloader\Library.FileDownloader.csproj", "{377E1E6E-5B21-4BC2-8812-D4B45EF3499F}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Library.FileDownloader.Tests", "Library.FileDownloader.Tests\Library.FileDownloader.Tests.csproj", "{1615F477-286F-4EA4-8D3D-66AF2B254A83}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Library.FileDownloader.UsageExample", "Library.FileDownloader.UsageExample\Library.FileDownloader.UsageExample.csproj", "{374BB1D0-F72B-4C55-9E74-F6AB9CFDE582}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutodeskConstructionCloud.ApiClient", "AutodeskConstructionCloud.ApiClient\AutodeskConstructionCloud.ApiClient.csproj", "{FAF3F90C-CA2C-4FE7-8836-F5B9BAA5F247}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutodeskConstructionCloud.ApiClient.Tests", "AutodeskConstructionCloud.ApiClient.Tests\AutodeskConstructionCloud.ApiClient.Tests.csproj", "{0F3C358C-2AA9-4DAE-A2EE-7DEBC0E02BBF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutodeskConstructionCloud.ApiClient.UnitTests", "AutodeskConstructionCloud.ApiClient.UnitTests\AutodeskConstructionCloud.ApiClient.UnitTests.csproj", "{0F3C358C-2AA9-4DAE-A2EE-7DEBC0E02BBF}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutodeskConstructionCloud.ApiClient.UsageExample", "AutodeskConstructionCloud.ApiClient.UsageExample\AutodeskConstructionCloud.ApiClient.UsageExample.csproj", "{6EEDD046-1DE4-4DAD-9CDD-5C33D2C87673}"
 EndProject
@@ -24,24 +18,20 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Library.Extensions", "Libra
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutodeskConstructionCloud.ApiClient.Benchmarks", "AutodeskConstructionCloud.ApiClient.Benchmarks\AutodeskConstructionCloud.ApiClient.Benchmarks.csproj", "{05560EB0-D78C-4FA0-A666-FB0340EB7E28}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutodeskConstructionCloud.Backup", "AutodeskConstructionCloud.Backup\AutodeskConstructionCloud.Backup.csproj", "{2F7B1DCE-29EE-4F38-99E0-F1CCA1388D4E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutodeskConstructionCloud.ApiClient.IntegrationTests", "AutodeskConstructionCloud.ApiClient.IntegrationTests\AutodeskConstructionCloud.ApiClient.IntegrationTests.csproj", "{6E4EAA61-5661-4917-89DA-0E067293FF64}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Library.Tests", "Library.Tests\Library.Tests.csproj", "{6A599680-407F-4DD2-A351-FC3386ED65B3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutodeskConstructionCloud.Backup.UnitTests", "AutodeskConstructionCloud.Backup.UnitTests\AutodeskConstructionCloud.Backup.UnitTests.csproj", "{E5ED9F6A-CBC3-42FE-A438-95D8E89BADA6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{377E1E6E-5B21-4BC2-8812-D4B45EF3499F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{377E1E6E-5B21-4BC2-8812-D4B45EF3499F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{377E1E6E-5B21-4BC2-8812-D4B45EF3499F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{377E1E6E-5B21-4BC2-8812-D4B45EF3499F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{1615F477-286F-4EA4-8D3D-66AF2B254A83}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1615F477-286F-4EA4-8D3D-66AF2B254A83}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1615F477-286F-4EA4-8D3D-66AF2B254A83}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1615F477-286F-4EA4-8D3D-66AF2B254A83}.Release|Any CPU.Build.0 = Release|Any CPU
-		{374BB1D0-F72B-4C55-9E74-F6AB9CFDE582}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{374BB1D0-F72B-4C55-9E74-F6AB9CFDE582}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{374BB1D0-F72B-4C55-9E74-F6AB9CFDE582}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{374BB1D0-F72B-4C55-9E74-F6AB9CFDE582}.Release|Any CPU.Build.0 = Release|Any CPU
 		{FAF3F90C-CA2C-4FE7-8836-F5B9BAA5F247}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{FAF3F90C-CA2C-4FE7-8836-F5B9BAA5F247}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FAF3F90C-CA2C-4FE7-8836-F5B9BAA5F247}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -78,5 +68,21 @@ Global
 		{05560EB0-D78C-4FA0-A666-FB0340EB7E28}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{05560EB0-D78C-4FA0-A666-FB0340EB7E28}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{05560EB0-D78C-4FA0-A666-FB0340EB7E28}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2F7B1DCE-29EE-4F38-99E0-F1CCA1388D4E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2F7B1DCE-29EE-4F38-99E0-F1CCA1388D4E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2F7B1DCE-29EE-4F38-99E0-F1CCA1388D4E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2F7B1DCE-29EE-4F38-99E0-F1CCA1388D4E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6E4EAA61-5661-4917-89DA-0E067293FF64}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6E4EAA61-5661-4917-89DA-0E067293FF64}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6E4EAA61-5661-4917-89DA-0E067293FF64}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6E4EAA61-5661-4917-89DA-0E067293FF64}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6A599680-407F-4DD2-A351-FC3386ED65B3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6A599680-407F-4DD2-A351-FC3386ED65B3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6A599680-407F-4DD2-A351-FC3386ED65B3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6A599680-407F-4DD2-A351-FC3386ED65B3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E5ED9F6A-CBC3-42FE-A438-95D8E89BADA6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E5ED9F6A-CBC3-42FE-A438-95D8E89BADA6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E5ED9F6A-CBC3-42FE-A438-95D8E89BADA6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E5ED9F6A-CBC3-42FE-A438-95D8E89BADA6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

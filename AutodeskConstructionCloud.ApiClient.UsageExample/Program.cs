@@ -2,7 +2,7 @@
 using System.Net.Http.Headers;
 using AutodeskConstructionCloud.ApiClient;
 using AutodeskConstructionCloud.ApiClient.Entities;
-using AutodeskConstructionCloud.ApiClient.Tests;
+using AutodeskConstructionCloud.ApiClient.UnitTests;
 using Castle.Components.DictionaryAdapter;
 using FluentAssertions;
 using Library.Logger;
@@ -14,9 +14,7 @@ using Library.Extensions;
 using NSubstitute;
 using File = AutodeskConstructionCloud.ApiClient.Entities.File;
 
-//var clientId = "vpy4ARkUEXQ4lL4dmTneGwmb1tZ3i8Jk";
-//var clientSecret = "k0G1TXacD0Ud88FE";
-//var accountId = "a867403b-f199-44fa-bdd6-a5dac350a541";
+
 
 string clientId = SecretsManager.GetEnvironmentVariableOrDefaultTo("acc:clientid", "InvalidClientId");
 string clientSecret = SecretsManager.GetEnvironmentVariableOrDefaultTo("acc:clientsecret", "InvalidClientSecret");

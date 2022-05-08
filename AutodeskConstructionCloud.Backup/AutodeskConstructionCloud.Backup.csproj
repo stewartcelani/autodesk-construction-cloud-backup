@@ -8,10 +8,11 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\AutodeskConstructionCloud.ApiClient.UnitTests\AutodeskConstructionCloud.ApiClient.UnitTests.csproj" />
+      <PackageReference Include="CommandLineParser" Version="2.8.0" />
+    </ItemGroup>
+
+    <ItemGroup>
       <ProjectReference Include="..\AutodeskConstructionCloud.ApiClient\AutodeskConstructionCloud.ApiClient.csproj" />
-      <ProjectReference Include="..\Library.Extensions\Library.Extensions.csproj" />
-      <ProjectReference Include="..\Library.SecretsManager\Library.SecretsManager.csproj" />
     </ItemGroup>
 
 </Project>

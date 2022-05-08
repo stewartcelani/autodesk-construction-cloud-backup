@@ -43,7 +43,7 @@ public class Folder
     public bool IsNotEmpty => IsEmpty == false;
     public DirectoryInfo? DirectoryInfo { get; set; }
     public bool Created => DirectoryInfo != null;
-    public IEnumerable<Folder> SubfoldersRecursive => Subfolders.RecursiveFlatten(x => x.Subfolders);
+    public IEnumerable<Folder> SubfoldersRecursive => Subfolders.FlattenRecursive(x => x.Subfolders);
     public IEnumerable<File> FilesRecursive => Files.Concat(SubfoldersRecursive.SelectMany(x => x.Files));
     public async Task GetContents()
     {
@@ -75,6 +75,7 @@ public class Folder
     }
     public async Task DownloadContents(string rootDirectory, CancellationToken ct = default)
     {
+        _apiClient.CreateDirectories(Subfolders, rootDirectory);
         await _apiClient.DownloadFiles(Files, rootDirectory, ct);
     }
     public async Task DownloadContentsRecursively(string rootDirectory, CancellationToken ct = default)

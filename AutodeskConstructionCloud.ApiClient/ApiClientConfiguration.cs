@@ -1,4 +1,5 @@
 ﻿using System.CodeDom.Compiler;
+using NLog.Config;
 using Polly;
 using Polly.Retry;
 
@@ -11,13 +12,12 @@ public class ApiClientConfiguration : ApiClientOptions
     public string AccountId { get; }
     public string HubId { get; set; }
     public AsyncRetryPolicy RetryPolicy { get; set; }
-
-    public ApiClientConfiguration(string clientId, string clientSecret, string accountId)
+    public ApiClientConfiguration(string clientId, string clientSecret, string accountId, string hubId)
     {
         ClientId = clientId;
         ClientSecret = clientSecret;
         AccountId = accountId;
-        HubId = accountId;
+        HubId = hubId;
         RetryPolicy = GetRetryPolicy(RetryAttempts, InitialRetryInSeconds);
     }
 

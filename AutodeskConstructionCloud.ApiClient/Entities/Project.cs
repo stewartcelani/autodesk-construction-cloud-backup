@@ -22,7 +22,7 @@ public class Project
      * Properties not directly from the Autodesk Api are below
      */
     public Folder? RootFolder { get; set; }
-    public IEnumerable<Folder> SubfoldersRecursive => RootFolder is null ? new List<Folder>() : RootFolder.Subfolders.RecursiveFlatten(x => x.Subfolders);
+    public IEnumerable<Folder> SubfoldersRecursive => RootFolder is null ? new List<Folder>() : RootFolder.Subfolders.FlattenRecursive(x => x.Subfolders);
     public IEnumerable<File> FilesRecursive => RootFolder is null ? new List<File>() : RootFolder.Files.Concat(SubfoldersRecursive.SelectMany(x => x.Files));
     public async Task GetRootFolder()
     {

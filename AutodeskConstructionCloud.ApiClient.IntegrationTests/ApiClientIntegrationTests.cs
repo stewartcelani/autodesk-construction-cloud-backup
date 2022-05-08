@@ -10,12 +10,11 @@ using AutodeskConstructionCloud.ApiClient.Entities;
 using Xunit;
 using FluentAssertions;
 using Library.SecretsManager;
-using NSubstitute.Extensions;
 
 // ReSharper disable AsyncVoidLambda
 
 
-namespace AutodeskConstructionCloud.ApiClient.Tests;
+namespace AutodeskConstructionCloud.ApiClient.UnitTests;
 
 public class ApiClientIntegrationTests
 {

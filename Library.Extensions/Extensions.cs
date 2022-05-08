@@ -2,7 +2,7 @@
 
 public static class Extensions
 {
-    public static IEnumerable<T> RecursiveFlatten<T>(this IEnumerable<T> rootEnumerable,
+    public static IEnumerable<T> FlattenRecursive<T>(this IEnumerable<T> rootEnumerable,
         Func<T, IEnumerable<T>> selector)
     {
         IEnumerable<T> recursiveFlatten = rootEnumerable.ToList();
@@ -13,7 +13,7 @@ public static class Extensions
 
         IEnumerable<T> descendants = recursiveFlatten
             .SelectMany(selector)
-            .RecursiveFlatten(selector);
+            .FlattenRecursive(selector);
 
         return recursiveFlatten.Concat(descendants);
     }

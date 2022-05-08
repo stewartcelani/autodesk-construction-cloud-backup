@@ -38,8 +38,19 @@ public class ApiClient : IApiClient
     {
         CreateDirectory(file.ParentFolder, rootDirectory);
         string downloadPath = Path.Combine(rootDirectory, file.GetPath()[1..]);
+        
+        if (Config.DryRun)
+        {
+            await System.IO.File.WriteAllBytesAsync(downloadPath, Array.Empty<byte>(), ct);
+            file.FileInfo = new FileInfo(downloadPath);
+            file.FileSizeOnDiskInMb = (decimal)Math.Round((((file.FileInfo.Length) / 1024f) / 1024f), 2);
+            Config.Logger?.Info($"{file.FileInfo.FullName} ({file.FileSizeOnDiskInMb} MB)");
+            return file.FileInfo;
+        }
+
         return await Config.RetryPolicy.ExecuteAsync(async () =>
         {
+            EnsureAccessToken();
             file.DownloadAttempts++;
             await using Stream stream = await Config.HttpClient.GetStreamAsync(file.DownloadUrl, ct);
             await using FileStream fileStream = new(downloadPath, FileMode.Create);
@@ -338,9 +349,9 @@ public class ApiClient : IApiClient
     private async Task EnsureAccessToken()
     {
         Config.Logger?.Trace("Top");
-        if (_accessTokenExpiresAt is null || _accessTokenExpiresAt < DateTime.Now)
+        if (_accessTokenExpiresAt < DateTime.Now || _accessTokenExpiresAt is null)
         {
-            Config.Logger?.Debug("Access token expired or null, calling GetAccessToken");
+            Config.Logger?.Warn("Access token expired or null, calling GetAccessToken");
             (_accessToken, _accessTokenExpiresAt) = await GetAccessToken();
             Config.HttpClient.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _accessToken);
@@ -377,7 +388,7 @@ public class ApiClient : IApiClient
         int expiresIn = authResponse.ExpiresIn;
         double modifiedExpiresIn = expiresIn * 0.9;
         DateTime accessTokenExpiresAt = (DateTime.Now).AddSeconds(modifiedExpiresIn);
-        Config.Logger?.Debug(
+        Config.Logger.Debug(
             $"Authenticated -- returning with accessToken: {accessToken}, accessTokenExpiresAt: {accessTokenExpiresAt:O}");
         return (accessToken, accessTokenExpiresAt);
     }

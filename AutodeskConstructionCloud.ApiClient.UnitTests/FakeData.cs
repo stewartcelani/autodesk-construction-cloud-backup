@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Bogus;
 using AutodeskConstructionCloud.ApiClient.Entities;
 
-namespace AutodeskConstructionCloud.ApiClient.Tests;
+namespace AutodeskConstructionCloud.ApiClient.UnitTests;
 
 public static class FakeData
 {

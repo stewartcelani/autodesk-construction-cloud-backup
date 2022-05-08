@@ -15,7 +15,7 @@ using File = AutodeskConstructionCloud.ApiClient.Entities.File;
 
 // ReSharper disable AsyncVoidLambda
 
-namespace AutodeskConstructionCloud.ApiClient.Tests;
+namespace AutodeskConstructionCloud.ApiClient.UnitTests;
 
 public class ApiClientUnitTests
 {
@@ -45,6 +45,7 @@ public class ApiClientUnitTests
         sut.Config.RetryAttempts.Should().Be(12);
         sut.Config.InitialRetryInSeconds.Should().Be(2);
         sut.Config.HttpClient.BaseAddress.Should().BeNull();
+        sut.Config.DryRun.Should().BeFalse();
         sut.Config.Logger.Should().BeNull();
     }
 
@@ -77,6 +78,7 @@ public class ApiClientUnitTests
                 options.RetryAttempts = 20;
                 options.InitialRetryInSeconds = 8;
                 options.MaxDegreeOfParallelism = 4;
+                options.DryRun = true;
             })
             .Create();
 
@@ -90,6 +92,7 @@ public class ApiClientUnitTests
         sut.Config.Logger.Config.LogLevel.Should().Be(LogLevel.Fatal);
         sut.Config.Logger.Config.LogToConsole.Should().Be(false);
         sut.Config.RetryAttempts.Should().Be(20);
+        sut.Config.DryRun.Should().BeTrue();
         sut.Config.InitialRetryInSeconds.Should().Be(8);
         sut.Config.MaxDegreeOfParallelism.Should().Be(4);
     }
