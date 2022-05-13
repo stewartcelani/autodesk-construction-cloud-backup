@@ -26,7 +26,7 @@ public class NLogLogger : ILogger
         NLog.LogLevel logLevel = MapILoggerConfigurationLogLevelToNLogLogLevel(Config.LogLevel);
         var config = new LoggingConfiguration();
         var layout =
-            "${longdate}|${level}|${callsite:fileName=true:includeSourcePath=false:skipFrames=1}|Line:${callsite-linenumber:skipFrames=1}|${message}             ${all-event-properties} ${exception:format=tostring}";
+            "${longdate}|${level}|${callsite:fileName=true:includeSourcePath=false:skipFrames=1}|${message}             ${all-event-properties} ${exception:format=tostring}";
         
         if (Config.LogToConsole)
         {

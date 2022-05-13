@@ -39,8 +39,10 @@ public class CommandLineArgs
         HelpText =
             "Comma separated list of project names to exclude from the backup. Takes priority over 'projectstobackup'.")]
     public IEnumerable<string> ProjectsToExclude { get; set; }
-    [Option(Required = false, Default = false, HelpText = "Enable verbose logging.")]
-    public bool VerboseLogging { get; set; }
+    [Option(Required = false, Default = false, HelpText = "Enable debug logging. Verbose.")]
+    public bool DebugLogging { get; set; }
+    [Option(Required = false, Default = false, HelpText = "Enable trace logging. Extremely verbose.")]
+    public bool TraceLogging { get; set; }
     [Option(Required = false, Default = 25, HelpText = "Backup summary notification email: SMTP port.")]
     public int SmtpPort { get; set; }
     [Option(Required = false, Default = null, HelpText = "Backup summary notification email: SMTP server name.")]

@@ -28,7 +28,8 @@ public class BackupConfiguration
         BackupsToRotate = commandLineArgs.BackupsToRotate == 0 ? 1 : commandLineArgs.BackupsToRotate;
         ProjectsToBackup = commandLineArgs.ProjectsToBackup.Select(s => s.Trim()).ToList();
         ProjectsToExclude = commandLineArgs.ProjectsToExclude.Select(s => s.Trim()).ToList();
-        VerboseLogging = commandLineArgs.VerboseLogging;
+        DebugLogging = commandLineArgs.DebugLogging;
+        TraceLogging = commandLineArgs.TraceLogging;
         SmtpPort = commandLineArgs.SmtpPort;
         SmtpHost = commandLineArgs.SmtpHost;
         SmtpFromAddress = commandLineArgs.SmtpFromAddress;
@@ -51,7 +52,9 @@ public class BackupConfiguration
     public int BackupsToRotate { get; private set; }
     public List<string> ProjectsToBackup { get; private set; } = new();
     public List<string> ProjectsToExclude { get; private set; } = new();
-    public bool VerboseLogging { get; private set; }
+    public bool DebugLogging { get; private set; }
+
+    public bool TraceLogging { get; private set; }
     public int SmtpPort { get; private set; } = 25;
     public string? SmtpHost { get; private set; }
     public string? SmtpFromAddress { get; private set; }

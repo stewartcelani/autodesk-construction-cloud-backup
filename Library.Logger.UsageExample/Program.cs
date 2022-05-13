@@ -1,5 +1,4 @@
 ﻿using Library.Logger;
-using NLog;
 using ILogger = Library.Logger.ILogger;
 using LogLevel = Library.Logger.LogLevel;
 

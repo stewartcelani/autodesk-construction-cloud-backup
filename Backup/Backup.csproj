@@ -5,6 +5,8 @@
         <TargetFramework>net6.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <TargetName>ACCBackup</TargetName>
+        <AssemblyName>ACCBackup</AssemblyName>
     </PropertyGroup>
 
     <ItemGroup>

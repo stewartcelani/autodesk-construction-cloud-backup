@@ -5,7 +5,8 @@ namespace ACC.Backup.UnitTests;
 public class BackupUnitTests
 {
     [Fact]
-    public void Test1()
+    public void BackupConfiguration_Should_MapArgs()
     {
+        
     }
 }

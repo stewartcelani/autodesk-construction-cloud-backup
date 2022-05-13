@@ -21,11 +21,11 @@ public class Backup : IBackup
         Config = config;
         Logger = new NLogLogger(new NLogLoggerConfiguration()
         {
-            LogLevel = Config.VerboseLogging ? Library.Logger.LogLevel.Trace : Library.Logger.LogLevel.Info,
+            LogLevel = Config.TraceLogging ? LogLevel.Trace : Config.DebugLogging ? LogLevel.Debug : LogLevel.Info,
             LogToConsole = true,
             LogToFile = true
         });
-        Logger.Debug("Creating ApiClient");
+        Logger.Debug("Building ApiClient");
         ApiClient = TwoLeggedApiClient
             .Configure()
             .WithClientId(config.ClientId)
@@ -48,7 +48,7 @@ public class Backup : IBackup
     {
         Logger.Info("=> Starting Autodesk Construction Cloud Backup");
         List<Project> allProjects = await ApiClient.GetProjects();
-        IEnumerable<Project> filteredProjects = FilterProjects(allProjects);
+        List<Project> filteredProjects = FilterProjects(allProjects);
         _projects = filteredProjects.Select(CastProjectToProjectBackup).ToList();
         if (_projects.Count == 0)
         {
@@ -95,7 +95,15 @@ public class Backup : IBackup
 
     private void LogBackupSummary(List<ProjectBackup> projects)
     {
-        IEnumerable<string> summary = GetBackupSummary(projects);
+
+        var summary = new List<string>
+        {
+            "=================================================================================",
+            " => BACKUP SUMMARY",
+            "================================================================================="
+        };
+        summary.AddRange(GetBackupSummary(projects));    
+        summary.Add("=================================================================================");
         foreach (string s in summary)
         {
             Logger.Info(s);
@@ -131,7 +139,7 @@ public class Backup : IBackup
                 ? new MailAddress(Config.SmtpFromAddress)
                 : new MailAddress(Config.SmtpFromAddress, Config.SmtpFromName);
             message.To.Add(new MailAddress(Config.SmtpToAddress));
-            message.Subject = GetEmailBackupSummarySubject(projects);
+            message.Subject = GetBackupSummaryHeader(projects);
             message.SubjectEncoding = System.Text.Encoding.UTF8;
             message.Body = string.Join("", htmlSummary.ToArray());
             message.BodyEncoding = System.Text.Encoding.UTF8;
@@ -156,23 +164,18 @@ public class Backup : IBackup
             throw new NullReferenceException("Cannot get backup summary with null BackupStartedAt or BackupFinishedAt");
         }
 
-        var summary = new List<string>
-        {
-            "=================================================================================",
-            "=> BACKUP SUMMARY",
-            "================================================================================="
-        };
+        var summary = new List<string>();
+        summary.Add($"  => {GetBackupSummaryHeader(projects)}");
         summary.AddRange(projects.Select(GetBackupSummaryLine));
         decimal totalStorageSizeInMb =
             Math.Round(projects.SelectMany(p => p.FilesRecursive).Select(f => f.StorageSizeInMb).Sum(), 2);
         var ts = (TimeSpan)(projects[^1].BackupFinishedAt - projects[0].BackupStartedAt);
         var backupDuration = ts.ToString(@"hh\:mm\:ss");
-        summary.Add($"=> Backed up {totalStorageSizeInMb} MB in {backupDuration} to {Config.BackupDirectory}");
-        summary.Add("=================================================================================");
+        summary.Add($"  => Backed up {totalStorageSizeInMb} MB in {backupDuration} to {Config.BackupDirectory}");
         return summary;
     }
 
-    private static string GetEmailBackupSummarySubject(List<ProjectBackup> projects)
+    private static string GetBackupSummaryHeader(List<ProjectBackup> projects)
     {
         if (projects.Count == 0)
         {
@@ -183,8 +186,7 @@ public class Backup : IBackup
         {
             throw new NullReferenceException("Cannot get backup summary with null BackupStartedAt or BackupFinishedAt");
         }
-
-
+        
         decimal totalStorageSizeInMb =
             Math.Round(projects.SelectMany(p => p.FilesRecursive).Select(f => f.StorageSizeInMb).Sum(), 2);
         var ts = (TimeSpan)(projects[^1].BackupFinishedAt - projects[0].BackupStartedAt);
@@ -296,7 +298,7 @@ public class Backup : IBackup
     }
 
 
-    private IEnumerable<Project> FilterProjects(IEnumerable<Project> projects)
+    private List<Project> FilterProjects(IEnumerable<Project> projects)
     {
         List<Project> filteredProjects = new();
         string[] projectsToBackup = Config.ProjectsToBackup.ConvertAll(x => x.ToLower()).ToArray();
