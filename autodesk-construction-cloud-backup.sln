@@ -22,7 +22,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutodeskConstructionCloud.B
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutodeskConstructionCloud.ApiClient.IntegrationTests", "AutodeskConstructionCloud.ApiClient.IntegrationTests\AutodeskConstructionCloud.ApiClient.IntegrationTests.csproj", "{6E4EAA61-5661-4917-89DA-0E067293FF64}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Library.Tests", "Library.Tests\Library.Tests.csproj", "{6A599680-407F-4DD2-A351-FC3386ED65B3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Library.Testing", "Library.Testing\Library.Testing.csproj", "{6A599680-407F-4DD2-A351-FC3386ED65B3}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutodeskConstructionCloud.Backup.UnitTests", "AutodeskConstructionCloud.Backup.UnitTests\AutodeskConstructionCloud.Backup.UnitTests.csproj", "{E5ED9F6A-CBC3-42FE-A438-95D8E89BADA6}"
 EndProject

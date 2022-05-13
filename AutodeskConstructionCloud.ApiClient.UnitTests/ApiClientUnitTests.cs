@@ -7,11 +7,11 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using AutodeskConstructionCloud.ApiClient.Entities;
-using Bogus.DataSets;
 using Xunit;
 using FluentAssertions;
 using Library.Logger;
 using File = AutodeskConstructionCloud.ApiClient.Entities.File;
+using Library.Testing;
 
 // ReSharper disable AsyncVoidLambda
 
@@ -42,7 +42,7 @@ public class ApiClientUnitTests
         sut.Config.AccountId.Should().Be(accountId);
         sut.Config.Logger.Should().BeNull();
         sut.Config.MaxDegreeOfParallelism.Should().Be(8);
-        sut.Config.RetryAttempts.Should().Be(12);
+        sut.Config.RetryAttempts.Should().Be(15);
         sut.Config.InitialRetryInSeconds.Should().Be(2);
         sut.Config.HttpClient.BaseAddress.Should().BeNull();
         sut.Config.DryRun.Should().BeFalse();

@@ -24,7 +24,7 @@ public class ApiClientConfiguration : ApiClientOptions
     public AsyncRetryPolicy GetRetryPolicy(int maxRetryAttempts, int initialRetryDelayInSeconds)
     {
         return Policy
-            .Handle<HttpRequestException>()
+            .Handle<Exception>()
             .WaitAndRetryAsync(
                 retryCount: maxRetryAttempts,
                 sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(retryAttempt * initialRetryDelayInSeconds),

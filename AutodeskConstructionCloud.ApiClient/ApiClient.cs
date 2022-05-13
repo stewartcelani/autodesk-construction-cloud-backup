@@ -18,14 +18,14 @@ public class ApiClient : IApiClient
         Config = config;
     }
 
-    public void CreateDirectory(Folder folder, string rootDirectory)
+    private static void CreateDirectory(Folder folder, string rootDirectory)
     {
         if (folder.DirectoryInfo is not null) return;
         string path = Path.Combine(rootDirectory, folder.GetPath()[1..]);
         folder.DirectoryInfo = Directory.CreateDirectory(path);
     }
 
-    public void CreateDirectories(IEnumerable<Folder> folders, string rootDirectory)
+    public static void CreateDirectories(IEnumerable<Folder> folders, string rootDirectory)
     {
         foreach (Folder folder in folders)
         {
@@ -344,14 +344,12 @@ public class ApiClient : IApiClient
         };
     }
 
-    #region Authentication
-
     private async Task EnsureAccessToken()
     {
         Config.Logger?.Trace("Top");
         if (_accessTokenExpiresAt < DateTime.Now || _accessTokenExpiresAt is null)
         {
-            Config.Logger?.Warn("Access token expired or null, calling GetAccessToken");
+            Config.Logger?.Trace("Access token expired or null, calling GetAccessToken");
             (_accessToken, _accessTokenExpiresAt) = await GetAccessToken();
             Config.HttpClient.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _accessToken);
@@ -388,7 +386,7 @@ public class ApiClient : IApiClient
         int expiresIn = authResponse.ExpiresIn;
         double modifiedExpiresIn = expiresIn * 0.9;
         DateTime accessTokenExpiresAt = (DateTime.Now).AddSeconds(modifiedExpiresIn);
-        Config.Logger.Debug(
+        Config.Logger?.Debug(
             $"Authenticated -- returning with accessToken: {accessToken}, accessTokenExpiresAt: {accessTokenExpiresAt:O}");
         return (accessToken, accessTokenExpiresAt);
     }
@@ -429,6 +427,5 @@ public class ApiClient : IApiClient
             }
         }
     }
-
-    #endregion
+    
 }

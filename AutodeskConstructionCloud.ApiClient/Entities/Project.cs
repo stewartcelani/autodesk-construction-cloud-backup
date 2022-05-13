@@ -10,7 +10,7 @@ public class Project
     {
         _apiClient = apiClient;
     }
-    
+
     /*
      * These properties are mapped from Autodesk Api
      */  
@@ -31,12 +31,14 @@ public class Project
     }
     public async Task GetContentsRecursively()
     {
+        _apiClient.Config.Logger?.Trace("Top");
         RootFolder ??= await _apiClient.GetFolder(ProjectId, RootFolderId);
         await RootFolder.GetContentsRecursively();
     }
     public async Task DownloadContentsRecursively(string rootDirectory, CancellationToken ct = default)
     {
-        _apiClient.CreateDirectories(SubfoldersRecursive, rootDirectory);
+        _apiClient.Config.Logger?.Trace("Top");
+        ApiClient.CreateDirectories(SubfoldersRecursive, rootDirectory);
         await _apiClient.DownloadFiles(FilesRecursive, rootDirectory, ct);
     }
 }

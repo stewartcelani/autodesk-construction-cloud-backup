@@ -26,7 +26,7 @@
     <ItemGroup>
       <ProjectReference Include="..\AutodeskConstructionCloud.ApiClient\AutodeskConstructionCloud.ApiClient.csproj" />
       <ProjectReference Include="..\Library.SecretsManager\Library.SecretsManager.csproj" />
-      <ProjectReference Include="..\Library.Tests\Library.Tests.csproj" />
+      <ProjectReference Include="..\Library.Testing\Library.Testing.csproj" />
     </ItemGroup>
 
     <ItemGroup>

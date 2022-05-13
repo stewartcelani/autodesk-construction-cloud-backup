@@ -75,12 +75,12 @@ public class Folder
     }
     public async Task DownloadContents(string rootDirectory, CancellationToken ct = default)
     {
-        _apiClient.CreateDirectories(Subfolders, rootDirectory);
+        ApiClient.CreateDirectories(Subfolders, rootDirectory);
         await _apiClient.DownloadFiles(Files, rootDirectory, ct);
     }
     public async Task DownloadContentsRecursively(string rootDirectory, CancellationToken ct = default)
     {
-        _apiClient.CreateDirectories(SubfoldersRecursive, rootDirectory);
+        ApiClient.CreateDirectories(SubfoldersRecursive, rootDirectory);
         await _apiClient.DownloadFiles(FilesRecursive, rootDirectory, ct);
     }
 }

@@ -25,15 +25,16 @@ public class NLogLogger : ILogger
     {
         NLog.LogLevel logLevel = MapILoggerConfigurationLogLevelToNLogLogLevel(Config.LogLevel);
         var config = new LoggingConfiguration();
+        var layout =
+            "${longdate}|${level}|${callsite:fileName=true:includeSourcePath=false:skipFrames=1}|Line:${callsite-linenumber:skipFrames=1}|${message}             ${all-event-properties} ${exception:format=tostring}";
         
-
         if (Config.LogToConsole)
         {
             var coloredConsoleTarget = new ColoredConsoleTarget("coloredconsole")
             {
                 
                 UseDefaultRowHighlightingRules = false,                
-                Layout = "${longdate}|${level}|${callsite:fileName=true:includeSourcePath=false:skipFrames=1}|Line:${callsite-linenumber:skipFrames=1}|${message}             ${all-event-properties} ${exception:format=tostring}"
+                Layout = layout
             };           
             coloredConsoleTarget.RowHighlightingRules.Add(new ConsoleRowHighlightingRule
             {
@@ -72,6 +73,34 @@ public class NLogLogger : ILogger
                 BackgroundColor = ConsoleOutputColor.NoChange
             });
             config.AddRule(minLevel: logLevel, maxLevel: NLog.LogLevel.Fatal, target: coloredConsoleTarget);
+        }
+
+        if (Config.LogToFile)
+        {
+            var infoLogFileTarget = new FileTarget("info")
+            {
+                FileName = @"${basedir}\Logs\${date:format=yyyy-MM-dd}.log",
+                Layout = layout
+            };
+            config.AddRule(minLevel: NLog.LogLevel.Info, maxLevel: NLog.LogLevel.Fatal, target: infoLogFileTarget);
+
+            if (logLevel == NLog.LogLevel.Trace)
+            {
+                var traceLogFileTarget = new FileTarget("trace")
+                {
+                    FileName = @"${basedir}\\Logs\${date:format=yyyy-MM-dd}.trace.log",
+                    Layout = layout
+                };
+                config.AddRule(minLevel: NLog.LogLevel.Trace, maxLevel: NLog.LogLevel.Fatal, target: traceLogFileTarget);
+            } else if (logLevel == NLog.LogLevel.Debug)
+            {
+                var debugLogFileTarget = new FileTarget("debug")
+                {
+                    FileName = @"${basedir}\\Logs\${date:format=yyyy-MM-dd}.debug.log",
+                    Layout = layout
+                };
+                config.AddRule(minLevel: NLog.LogLevel.Debug, maxLevel: NLog.LogLevel.Fatal, target: debugLogFileTarget);
+            }
         }
         
         LogManager.Configuration = config;
