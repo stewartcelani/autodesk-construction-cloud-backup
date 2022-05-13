@@ -1,4 +1,4 @@
-﻿using AutodeskConstructionCloud.Backup;
+﻿using ACC.Backup;
 
 var backupConfiguration = new BackupConfiguration(args);
 var backup = new Backup(backupConfiguration);

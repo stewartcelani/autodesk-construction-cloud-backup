@@ -1,6 +1,6 @@
-﻿using AutodeskConstructionCloud.ApiClient.Entities;
+﻿using ACC.ApiClient.Entities;
 
-namespace AutodeskConstructionCloud.Backup.Entities;
+namespace ACC.Backup.Entities;
 
 public class ProjectBackup : Project
 {

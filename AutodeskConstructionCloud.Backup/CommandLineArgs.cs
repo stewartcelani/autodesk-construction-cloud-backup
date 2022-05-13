@@ -1,6 +1,6 @@
 ﻿using CommandLine;
 
-namespace AutodeskConstructionCloud.Backup;
+namespace ACC.Backup;
 
 public class CommandLineArgs
 {

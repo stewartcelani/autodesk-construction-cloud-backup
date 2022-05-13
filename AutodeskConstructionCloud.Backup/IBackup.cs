@@ -1,4 +1,4 @@
-﻿namespace AutodeskConstructionCloud.Backup;
+﻿namespace ACC.Backup;
 
 public interface IBackup
 {

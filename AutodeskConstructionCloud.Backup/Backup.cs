@@ -1,12 +1,12 @@
 ﻿using System.Net;
 using System.Net.Mail;
 using System.Reflection;
-using AutodeskConstructionCloud.ApiClient;
-using AutodeskConstructionCloud.ApiClient.Entities;
-using AutodeskConstructionCloud.Backup.Entities;
+using ACC.ApiClient;
+using ACC.ApiClient.Entities;
+using ACC.Backup.Entities;
 using Library.Logger;
 
-namespace AutodeskConstructionCloud.Backup;
+namespace ACC.Backup;
 
 public class Backup : IBackup
 {
@@ -22,7 +22,8 @@ public class Backup : IBackup
         Logger = new NLogLogger(new NLogLoggerConfiguration()
         {
             LogLevel = Config.VerboseLogging ? Library.Logger.LogLevel.Trace : Library.Logger.LogLevel.Info,
-            LogToConsole = true
+            LogToConsole = true,
+            LogToFile = true
         });
         Logger.Debug("Creating ApiClient");
         ApiClient = TwoLeggedApiClient
@@ -41,18 +42,6 @@ public class Backup : IBackup
             })
             .Create();
         Logger.Trace("ApiClient created, constructor exiting.");
-    }
-
-    private ProjectBackup CastProjectToProjectBackup(Project project)
-    {
-        var projectBackup = new ProjectBackup(ApiClient);
-        foreach (PropertyInfo propBase in typeof(Project).GetProperties().Where(p => p.CanRead && p.CanWrite))
-        {
-            PropertyInfo? propDerived = typeof(ProjectBackup).GetProperty(propBase.Name);
-            propDerived?.SetValue(projectBackup, propBase.GetValue(project, null), null);
-        }
-
-        return projectBackup;
     }
 
     public async Task Run()
@@ -84,8 +73,24 @@ public class Backup : IBackup
         }
 
         LogBackupSummary(_projects);
-        EmailBackupSummary(_projects);
+        if (Config.SmtpHost is not null && Config.SmtpFromAddress is not null && Config.SmtpToAddress is not null)
+        {
+            EmailBackupSummary(_projects);
+        }
+
         Logger.Info("=> Closing Autodesk Construction Cloud Backup");
+    }
+
+    private ProjectBackup CastProjectToProjectBackup(Project project)
+    {
+        var projectBackup = new ProjectBackup(ApiClient);
+        foreach (PropertyInfo propBase in typeof(Project).GetProperties().Where(p => p.CanRead && p.CanWrite))
+        {
+            PropertyInfo? propDerived = typeof(ProjectBackup).GetProperty(propBase.Name);
+            propDerived?.SetValue(projectBackup, propBase.GetValue(project, null), null);
+        }
+
+        return projectBackup;
     }
 
     private void LogBackupSummary(List<ProjectBackup> projects)
@@ -100,7 +105,7 @@ public class Backup : IBackup
     private void EmailBackupSummary(List<ProjectBackup> projects)
     {
         Logger.Trace("Top");
-        if (Config.SmtpHost is null || Config.SmtpFromAddress is null || Config.SmtpToAddress == null)
+        if (Config.SmtpHost is null || Config.SmtpFromAddress is null || Config.SmtpToAddress is null)
         {
             Logger.Debug(
                 "Returning early as one of Config.SmtpHost, Config.SmtpFromAddress or Config.SmtpToAddress is null.");
@@ -120,6 +125,7 @@ public class Backup : IBackup
             {
                 smtp.Credentials = new NetworkCredential(Config.SmtpUsername, Config.SmtpPassword);
             }
+
             var message = new MailMessage();
             message.From = string.IsNullOrEmpty(Config.SmtpFromName)
                 ? new MailAddress(Config.SmtpFromAddress)
@@ -253,7 +259,6 @@ public class Backup : IBackup
         {
             Logger.Info($"    - {project.Name} ({project.ProjectId})");
         }
-
         Logger.Info("=================================================================================");
     }
 

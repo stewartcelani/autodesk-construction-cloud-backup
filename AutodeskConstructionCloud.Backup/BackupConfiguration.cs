@@ -1,7 +1,6 @@
 ﻿using CommandLine;
-using Library.Logger;
 
-namespace AutodeskConstructionCloud.Backup;
+namespace ACC.Backup;
 
 public class BackupConfiguration
 {
