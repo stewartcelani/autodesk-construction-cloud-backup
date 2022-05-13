@@ -21,7 +21,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Library.Extensions", "Libra
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ApiClient.Benchmarks", "ApiClient.Benchmarks\ApiClient.Benchmarks.csproj", "{05560EB0-D78C-4FA0-A666-FB0340EB7E28}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Backup", "AutodeskConstructionCloud.Backup\Backup.csproj", "{2F7B1DCE-29EE-4F38-99E0-F1CCA1388D4E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Backup", "Backup\Backup.csproj", "{2F7B1DCE-29EE-4F38-99E0-F1CCA1388D4E}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ApiClient.IntegrationTests", "ApiClient.IntegrationTests\ApiClient.IntegrationTests.csproj", "{6E4EAA61-5661-4917-89DA-0E067293FF64}"
 EndProject
