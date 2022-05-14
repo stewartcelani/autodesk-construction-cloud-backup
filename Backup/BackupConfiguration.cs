@@ -53,7 +53,6 @@ public class BackupConfiguration
     public List<string> ProjectsToBackup { get; private set; } = new();
     public List<string> ProjectsToExclude { get; private set; } = new();
     public bool DebugLogging { get; private set; }
-
     public bool TraceLogging { get; private set; }
     public int SmtpPort { get; private set; } = 25;
     public string? SmtpHost { get; private set; }
