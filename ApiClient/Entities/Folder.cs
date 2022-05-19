@@ -71,14 +71,14 @@ public class Folder
 
         return ParentFolder.GetPath(rootFolderId, sb);
     }
-    public async Task DownloadContents(string rootDirectory, CancellationToken ct = default)
+    public async Task DownloadContents(string downloadPath, CancellationToken ct = default)
     {
-        ApiClient.CreateDirectories(Subfolders, rootDirectory);
-        await _apiClient.DownloadFiles(Files, rootDirectory, ct);
+        ApiClient.CreateDirectories(Subfolders, downloadPath);
+        await _apiClient.DownloadFiles(Files, downloadPath, ct);
     }
-    public async Task DownloadContentsRecursively(string rootDirectory, CancellationToken ct = default)
+    public async Task DownloadContentsRecursively(string downloadPath, CancellationToken ct = default)
     {
-        ApiClient.CreateDirectories(SubfoldersRecursive, rootDirectory);
-        await _apiClient.DownloadFiles(FilesRecursive, rootDirectory, ct);
+        ApiClient.CreateDirectories(SubfoldersRecursive, downloadPath);
+        await _apiClient.DownloadFiles(FilesRecursive, downloadPath, ct);
     }
 }

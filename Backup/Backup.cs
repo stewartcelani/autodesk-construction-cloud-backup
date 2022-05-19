@@ -164,8 +164,7 @@ public class Backup : IBackup
             throw new NullReferenceException("Cannot get backup summary with null BackupStartedAt or BackupFinishedAt");
         }
 
-        var summary = new List<string>();
-        summary.Add($"  => {GetBackupSummaryHeader(projects)}");
+        var summary = new List<string> { $"  => {GetBackupSummaryHeader(projects)}" };
         summary.AddRange(projects.Select(GetBackupSummaryLine));
         decimal totalStorageSizeInMb =
             Math.Round(projects.SelectMany(p => p.FilesRecursive).Select(f => f.StorageSizeInMb).Sum(), 2);

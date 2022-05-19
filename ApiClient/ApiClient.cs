@@ -50,7 +50,7 @@ public class ApiClient : IApiClient
 
         return await Config.RetryPolicy.ExecuteAsync(async () =>
         {
-            EnsureAccessToken();
+            await EnsureAccessToken();
             file.DownloadAttempts++;
             await using Stream stream = await Config.HttpClient.GetStreamAsync(file.DownloadUrl, ct);
             await using FileStream fileStream = new(downloadPath, FileMode.Create);
@@ -102,6 +102,8 @@ public class ApiClient : IApiClient
                 moreDetailsUrl);
         });
         var projectResponse = JsonConvert.DeserializeObject<ProjectResponse>(responseString);
+        if (projectResponse is null)
+            throw new ArgumentNullException("projectResponse");
         var project = new Project(this)
         {
             ProjectId = projectResponse.Data.Id,
@@ -138,6 +140,8 @@ public class ApiClient : IApiClient
                     moreDetailsUrl);
             });
             var projectsResponse = JsonConvert.DeserializeObject<ProjectsResponse>(responseString);
+            if (projectsResponses is null)
+                throw new ArgumentNullException("projectsResponses");
             projectsResponses.Add(projectsResponse);
             if (projectsResponse.Links?.Next?.Href is not null)
             {
@@ -190,6 +194,8 @@ public class ApiClient : IApiClient
                 moreDetailsUrl);
         });
         var folderResponse = JsonConvert.DeserializeObject<FolderResponse>(responseString);
+        if (folderResponse is null)
+            throw new ArgumentNullException("folderResponse");
         string parentFolderId = folderResponse.Data.Relationships.Parent.Data.Id;
         Folder folder = MapFolderFromFolderContentsResponseData(projectId, parentFolderId, folderResponse.Data);
         if (getFolderContents)

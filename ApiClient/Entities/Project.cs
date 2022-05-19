@@ -35,10 +35,10 @@ public class Project
         RootFolder ??= await _apiClient.GetFolder(ProjectId, RootFolderId);
         await RootFolder.GetContentsRecursively();
     }
-    public async Task DownloadContentsRecursively(string rootDirectory, CancellationToken ct = default)
+    public async Task DownloadContentsRecursively(string downloadPath, CancellationToken ct = default)
     {
         _apiClient.Config.Logger?.Trace("Top");
-        ApiClient.CreateDirectories(SubfoldersRecursive, rootDirectory);
-        await _apiClient.DownloadFiles(FilesRecursive, rootDirectory, ct);
+        ApiClient.CreateDirectories(SubfoldersRecursive, downloadPath);
+        await _apiClient.DownloadFiles(FilesRecursive, downloadPath, ct);
     }
 }
