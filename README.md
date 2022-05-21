@@ -13,10 +13,12 @@ It is used daily to backup 70~ projects (100 GB~) in 3 hours:15 minutes.
 ### Prerequities
 1. Create an app via https://forge.autodesk.com/. Using a trial is fine. At the time of writing all the APIs the app we are creating will use are free and the signup process doesn't require any payment details. When the trial expires your app will keep working.
 2. You will need the Client ID, Client Secret, App Name = "Backup", Descripton = "Backup", Callback URL: point to your business URL but it is not important (this is for 3 legged auth and we only use 2 legged), and "APIs this app will be able to access": Autodesk Construction Cloud API, BIM 360 API, Data Management API.
-3. Enable Custom Integrations on your Autodesk admin account (if you don't see the tab email autodesk support as the article describes -- note: it is normal not to see the tab, dont panic): https://knowledge.autodesk.com/support/bim-360/learn-explore/caas/CloudHelp/cloudhelp/ENU/BIM360D-Administration/files/About-Account-Admin/GUID-0C83B441-C611-4574-8DA0-45D5CFC235FA-html.html
-4. From Accounts Admin (admin.b360.autodesk.com/) -> Settings -> Custom Integrations
+3. Enable Custom Integrations on your Autodesk admin account (if you don't see the tab email autodesk support as the article describes -- it's preferable if you don't mention ACCBackup specifically, just say you want to build a custom integration -- note: it is normal not to see the tab, dont panic): https://knowledge.autodesk.com/support/bim-360/learn-explore/caas/CloudHelp/cloudhelp/ENU/BIM360D-Administration/files/About-Account-Admin/GUID-0C83B441-C611-4574-8DA0-45D5CFC235FA-html.html
+4. From Accounts Admin (admin.b360.autodesk.com) -> Settings -> Custom Integrations
 5. Add Custom Integration -> you'll be asked for Client ID and App Name but that is about it.
 6. Once this is done you will have a forge app with clientid & clientsecret that will be approved for your accountid.
+
+NOTE: The above steps (roughly) mapped onto pure Autodesk Construction Cloud (the new Autodesk model/signup process) projects and the backup still worked. Currently, from what I see, they are still internally mapping projects with "b.{projectId}" but that may change. ACCBackup supports the --hubid flag to explicitly specify "b.{accountId}" or just "{accountId}".
 
 ### Examples
 
@@ -54,6 +56,7 @@ ACCBackup.exe --projectstoexclude "Test Project, 7468066c-53e6-4acf-8086-6b5fce0
 ```
 ### Debugging
 - Log files are located in ACCBackup.exe\Logs 
+- Try running with --hubid "YourAccoundIdHere" OR --hubid "b.YourAccountIdHere" (Autodesk is migrating from BIM360 to 'Autodesk Construction Cloud' but internally, at the moment, the API hubid needs b.AccountId (b. = BIM360).
 - First step is to run with the --debuglogging flag
 - If the --debuglogging flag doesn't point you in the right direction the --tracelogging flag should be used. 
 - If all else fails log an issue via the repo with a link to your --tracelogginng log file and I will investigate.
