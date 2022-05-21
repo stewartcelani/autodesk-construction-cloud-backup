@@ -1,7 +1,8 @@
 # Autodesk Construction Cloud Backup
-ACCBackup is a C# console application built to backup Autodesk Construction Cloud/BIM360 projects.
+ACCBackup is a C# console application built to backup all Autodesk Construction Cloud/BIM360 projects in your account.
 
-It can be run as a one-off or scheduled via a script. It was designed to fufill a need that Veeam Backup didn't support.
+It can be run as a one-off or scheduled via a script. It was designed to fufill a need that Veeam Backup didn't support. The only products on the market at the time were $6k AUD per year, took 15-20 hours to backup what ACCBackup does in 3 hours, and required each project to be manually configured as a separate task/job. By default ACCBackup will backup all projects in your account.
+
 The end result, from an IT managmenet perspective, will be setting up 3 scheduled tasks that will enable 5x daily backups, 4x weekly backups, 12x monthly backups that will rotate accordingly.
 
 It is used daily to backup 70~ projects (100 GB~) in 3 hours:15 minutes.
@@ -40,6 +41,20 @@ Example of a monthly backup with 12 monthly backup folders rotating:
 ```
 ACCBackup.exe --backupdirectory "C:\ACCBackup\Monthly" --clientid "DRO4zxzt71HCkL34cn2tAUSRS0OQGaRT" --clientsecret "tFRHKhuIrGQUi5d3" --accountid "9b3cc923-d920-4fee-ae91-5e9c8e4040rb" --backupstorotate 12
 ```
+Example backing up two projects (you can use project name or project id, as project name can change it is recommended to use project id)
+```
+ACCBackup.exe --projectstobackup "Test Project, 7468066c-53e6-4acf-8086-6b5fce0048d6" --backupdirectory "C:\ACCBackup" --clientid "DRO4zxzt71HCkL34cn2tAUSRS0OQGaRT" --clientsecret "tFRHKhuIrGQUi5d3" --accountid "9b3cc923-d920-4fee-ae91-5e9c8e4040rb"
+```
+Example backing all projects BUT two projects
+```
+ACCBackup.exe --projectstoexclude "Test Project, 7468066c-53e6-4acf-8086-6b5fce0048d6" --backupdirectory "C:\ACCBackup" --clientid "DRO4zxzt71HCkL34cn2tAUSRS0OQGaRT" --clientsecret "tFRHKhuIrGQUi5d3" --accountid "9b3cc923-d920-4fee-ae91-5e9c8e4040rb"
+```
+### Debugging
+- Log files are located in ACCBackup.exe\Logs 
+- First step is to run with the --debuglogging flag
+- If the --debuglogging flag doesn't point you in the right direction the --tracelogging flag should be used. 
+- Log an issue via the repo with a link to your logfile and I will investigate.
+
 
 ### ApiClient
 ACCBackup is designed around an ApiClient class library I wrote that does 99% of the heavy lifting.
