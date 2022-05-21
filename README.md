@@ -4,7 +4,7 @@ ACCBackup is a C# console application built to backup Autodesk Construction Clou
 It can be run as a one-off or scheduled via a script. It was designed to fufill a need that Veeam Backup didn't support.
 The end result, from an IT managmenet perspective, will be setting up 3 scheduled tasks that will enable 5x daily backups, 4x weekly backups, 12x monthly backups that will rotate accordingly.
 
-It is consistently used to backup 70~ projects (100 GB~) in 3 hours:30 minutes.
+It is used daily to backup 70~ projects (100 GB~) in 3 hours:15 minutes.
 
 ### Prerequities
 1. Create an app via https://forge.autodesk.com/
@@ -14,7 +14,7 @@ It is consistently used to backup 70~ projects (100 GB~) in 3 hours:30 minutes.
 5. Add Custom Integration -> you'll be asked for Client ID and App Name but that is about it.
 6. Once this is done you will have a forge app with clientid & clientsecret that will be approved for your accountid.
 
-### Examples.
+### Examples
 
 Basic:
 ```
@@ -41,12 +41,12 @@ Example of a monthly backup with 12 monthly backup folders rotating:
 ACCBackup.exe --backupdirectory "C:\ACCBackup\Monthly" --clientid "DRO4zxzt71HCkL34cn2tAUSRS0OQGaRT" --clientsecret "tFRHKhuIrGQUi5d3" --accountid "9b3cc923-d920-4fee-ae91-5e9c8e4040rb" --backupstorotate 12
 ```
 
-### ApiClient (Do It Yourself)
-I designed ACCBackup around an ApiClient class library I wrote that does 99% of the heavy lifting.
+### ApiClient
+ACCBackup is designed around an ApiClient class library I wrote that does 99% of the heavy lifting.
 This makes it very easy for you to take the class library and do your own thing with it if needed.
-Below is a copy of ApitClient.UsageExample:Program.cs
+Below is a copy of ApiClient.UsageExample:Program.cs
 
-````
+````csharp
 using ACC.ApiClient;
 using ACC.ApiClient.Entities;
 using Library.Logger;
