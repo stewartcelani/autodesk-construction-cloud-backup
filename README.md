@@ -10,6 +10,11 @@ The end result, from an IT managmenet perspective, will be setting up 3 schedule
 
 It is used daily to backup 70~ projects (100 GB~) in 3 hours:15 minutes.
 
+### Install
+- Install latest [.NET Runtime 6.X.X](https://dotnet.microsoft.com/en-us/download/dotnet/6.0) -- only the console version is required ("The .NET Runtime contains just the components needed to run a console app. Typically, you'd also install either the ASP.NET Core Runtime or .NET Desktop Runtime.")
+- Download the .zip via [the releases tab](https://github.com/stewartcelani/autodesk-construction-cloud-backup/releases)
+- Unzip and run, log files will be places in a "Logs" directory in whatever directory ACCBackup.exe is run from
+
 ### Prerequities
 1. Create an app via https://forge.autodesk.com/. Using a trial is fine. At the time of writing all the APIs the app we are creating will use are free and the signup process doesn't require any payment details. When the trial expires your app will keep working.
 2. You will need the Client ID, Client Secret, App Name = "Backup", Descripton = "Backup", Callback URL: point to your business URL but it is not important (this is for 3 legged auth and we only use 2 legged), and "APIs this app will be able to access": Autodesk Construction Cloud API, BIM 360 API, Data Management API.
