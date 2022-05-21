@@ -1329,7 +1329,7 @@ public class ApiClientUnitTests
         file.ReservedUserId.Should().BeNull();
         file.ReservedUserName.Should().BeNull();
         file.StorageSize.Should().Be(78750);
-        file.StorageSizeInMb.Should().Be(0.08m);
+        file.ApiReportedStorageSizeInMb.Should().Be(0.08m);
         file.Type.Should().Be("versions");
         file.VersionNumber.Should().Be(1);
     }

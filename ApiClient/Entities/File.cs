@@ -31,7 +31,7 @@ public class File
     /*
      * Properties not directly from the Autodesk Api are below
      */
-    public decimal StorageSizeInMb => (decimal)Math.Round((((StorageSize) / 1024f) / 1024f), 2);
+    public decimal ApiReportedStorageSizeInMb => (decimal)Math.Round((((StorageSize) / 1024f) / 1024f), 2);
     public Folder ParentFolder { get; set; }
     public string ProjectId { get; set; }
     public int DownloadAttempts { get; set; } = 0;

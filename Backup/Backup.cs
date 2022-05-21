@@ -166,11 +166,12 @@ public class Backup : IBackup
 
         var summary = new List<string> { $"  => {GetBackupSummaryHeader(projects)}" };
         summary.AddRange(projects.Select(GetBackupSummaryLine));
-        decimal totalStorageSizeInMb =
-            Math.Round(projects.SelectMany(p => p.FilesRecursive).Select(f => f.StorageSizeInMb).Sum(), 2);
+        decimal totalApiReportedStorageSizeInMb =
+            Math.Round(projects.SelectMany(p => p.FilesRecursive).Select(f => f.ApiReportedStorageSizeInMb).Sum(), 2);
+        decimal totalFileSizeOnDiskInMb = Math.Round(projects.SelectMany(p => p.FilesRecursive).Select(f => f.FileSizeOnDiskInMb ?? 0).Sum(), 2);
         var ts = (TimeSpan)(projects[^1].BackupFinishedAt - projects[0].BackupStartedAt);
         var backupDuration = ts.ToString(@"hh\:mm\:ss");
-        summary.Add($"  => Backed up {totalStorageSizeInMb} MB in {backupDuration} to {Config.BackupDirectory}");
+        summary.Add(@$"  => Backed up {totalFileSizeOnDiskInMb}/{totalApiReportedStorageSizeInMb} MB in {backupDuration} to {Config.BackupDirectory}");
         return summary;
     }
 
@@ -187,7 +188,8 @@ public class Backup : IBackup
         }
         
         decimal totalStorageSizeInMb =
-            Math.Round(projects.SelectMany(p => p.FilesRecursive).Select(f => f.StorageSizeInMb).Sum(), 2);
+            Math.Round(projects.SelectMany(p => p.FilesRecursive).Select(f => f.ApiReportedStorageSizeInMb).Sum(), 2);
+        decimal totalFileSizeOnDiskInMb = Math.Round(projects.SelectMany(p => p.FilesRecursive).Select(f => f.FileSizeOnDiskInMb ?? 0).Sum(), 2);
         var ts = (TimeSpan)(projects[^1].BackupFinishedAt - projects[0].BackupStartedAt);
         var backupDuration = ts.ToString(@"hh\:mm\:ss");
         List<string> backupSummaryLines = projects.Select(GetBackupSummaryLine).ToList();
@@ -196,7 +198,7 @@ public class Backup : IBackup
         int errorCount = backupSummaryLines.Count(s => s.Contains("[ERROR]"));
 
         return
-            $"ACCBackup: {projects.Count} projects ({successCount} success, {partialFailCount} partial fail, {errorCount} error) - {totalStorageSizeInMb} MB in {backupDuration} ";
+            @$"ACCBackup: {projects.Count} projects ({successCount} success, {partialFailCount} partial fail, {errorCount} error) - {totalFileSizeOnDiskInMb/totalStorageSizeInMb} MB in {backupDuration} ";
     }
 
     private static string GetBackupSummaryLine(ProjectBackup project)
@@ -206,7 +208,8 @@ public class Backup : IBackup
             throw new NullReferenceException("Cannot get backup summary with null BackupStartedAt or BackupFinishedAt");
         }
 
-        decimal projectStorageSizeInMb = Math.Round(project.FilesRecursive.Select(f => f.StorageSizeInMb).Sum(), 2);
+        decimal totalApiReportedStorageSizeInMb = Math.Round(project.FilesRecursive.Select(f => f.ApiReportedStorageSizeInMb).Sum(), 2);
+        decimal totalFileSizeOnDiskInMb = Math.Round(project.FilesRecursive.Select(f => f.FileSizeOnDiskInMb ?? 0).Sum(), 2);
         var ts = (TimeSpan)(project.BackupFinishedAt - project.BackupStartedAt);
         var backupDuration = ts.ToString(@"hh\:mm\:ss");
         int totalFiles = project.FilesRecursive.Count();
@@ -230,7 +233,7 @@ public class Backup : IBackup
         }
 
         summary +=
-            $"{project.Name} ({project.ProjectId}) - {projectStorageSizeInMb} MB in {backupDuration} - {filesDownloaded}/{totalFiles} files backed up in {foldersCreated}/{totalFolders} folders";
+            @$"{project.Name} ({project.ProjectId}) - {totalFileSizeOnDiskInMb}/{totalApiReportedStorageSizeInMb} MB in {backupDuration} - {filesDownloaded}/{totalFiles} files backed up in {foldersCreated}/{totalFolders} folders";
         return summary;
     }
 
@@ -297,16 +300,33 @@ public class Backup : IBackup
     }
 
 
+    /*
+     * Filters down ApiClient.GetProjects() (all projects) based on commandline parameters --projectstobackup
+     * and --projectstoexclude. Will filter based on either project name or project id. As project name can change
+     * the project id is the recommended way.
+     */
     private List<Project> FilterProjects(IEnumerable<Project> projects)
     {
         List<Project> filteredProjects = new();
-        string[] projectsToBackup = Config.ProjectsToBackup.ConvertAll(x => x.ToLower()).ToArray();
-        string[] projectsToExclude = Config.ProjectsToExclude.ConvertAll(x => x.ToLower()).ToArray();
+        List<string> toBackup = new();
+        foreach (string s in Config.ProjectsToBackup.ConvertAll(x => x.ToLower()))
+        {
+            toBackup.Add(s);
+            toBackup.Add($"b.{s}"); // ProjectId from Autodesk API will usually be b.GUID even if, in the web browser, the URL/ID contains just GUID. This will allow users to just enter a GUID in --projectstobackup or --projectstoexclude flag without worrying about quirks of the API.
+        }
+        List<string> toExclude = new();
+        foreach (string s in Config.ProjectsToExclude.ConvertAll(x => x.ToLower()))
+        {
+            toExclude.Add(s);
+            toExclude.Add($"b.{s}");
+        }
+        string[] projectsToBackup = toBackup.ToArray();
+        string[] projectsToExclude = toExclude.ToArray();
         foreach (Project project in projects.Where(project => project.Name != "Sample Project"))
         {
             if (Config.ProjectsToExclude.Count > 0)
             {
-                if (projectsToExclude.Contains(project.Name.ToLower()))
+                if (projectsToExclude.Contains(project.Name.ToLower()) || projectsToExclude.Contains(project.ProjectId.ToLower()))
                 {
                     continue;
                 }
@@ -314,7 +334,7 @@ public class Backup : IBackup
 
             if (Config.ProjectsToBackup.Count > 0)
             {
-                if (projectsToBackup.Contains(project.Name.ToLower()))
+                if (projectsToBackup.Contains(project.Name.ToLower()) || projectsToBackup.Contains(project.ProjectId.ToLower()))
                 {
                     filteredProjects.Add(project);
                 }

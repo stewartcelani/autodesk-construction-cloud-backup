@@ -57,7 +57,14 @@ public class ApiClient : IApiClient
             await stream.CopyToAsync(fileStream, ct);
             file.FileInfo = new FileInfo(downloadPath);
             file.FileSizeOnDiskInMb = (decimal)Math.Round((((file.FileInfo.Length) / 1024f) / 1024f), 2);
-            Config.Logger?.Info($"{file.FileInfo.FullName} ({file.FileSizeOnDiskInMb} MB)");
+            if (file.FileSizeOnDiskInMb == file.ApiReportedStorageSizeInMb)
+            {
+                Config.Logger?.Debug($"{file.FileInfo.FullName} ({file.FileSizeOnDiskInMb} MB)");
+            }
+            else
+            {
+                Config.Logger?.Warn(@$"{file.FileInfo.FullName} ({file.FileSizeOnDiskInMb}/{file.ApiReportedStorageSizeInMb} MB) - MISMATCH BETWEEN SIZE ON DISK AND SIZE REPORTED BY AUTODESK API");
+            }
             return file.FileInfo;
         });
     }
