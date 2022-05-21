@@ -22,6 +22,64 @@ NOTE: The above steps (roughly) mapped onto pure Autodesk Construction Cloud (th
 
 ### Examples
 
+--help
+````
+--backupdirectory           Required. Backup directory.
+
+--clientid                  Required. Client ID of Autodesk Forge app.
+
+--clientsecret              Required. Client secret of Autodesk Forge app.
+
+--accountid                 Required. Autodesk Construction Cloud account ID.
+
+--hubid                     Autodesk Construction Cloud HubId, defaults to b.AccountId. See
+https://forge.autodesk.com/en/docs/data/v2/reference/http/hubs-hub_id-projects-project_id-
+GET/ for more information.
+
+--maxdegreeofparallelism    (Default: 8) Number of files to download in parallel.
+
+--retryattempts             (Default: 15) Amount of times to retry when there are errors communicating with the
+Autodesk API.
+
+--initialretryinseconds     (Default: 2) Each subsequent retry is RetryAttempt# * InitialRetryInSeconds. Default
+settings of 15 RetryAttempts with InitialRetryInSeconds 2 totals 4 minutes of retrying.
+
+--dryrun                    (Default: false) Backup will only create 0 byte placeholder files instead of downloading
+them, will still create full file structure.
+
+--backupstorotate           (Default: 1) Number of backups to to maintain.
+
+--projectstobackup          Comma separated list of project names OR project ids to backup. If none given, all projects will be
+backed up.
+
+--projectstoexclude         Comma separated list of project names OR project ids to exclude from the backup. Takes priority over
+'projectstobackup'.
+
+--debuglogging              (Default: false) Enable debug logging. Verbose.
+
+--tracelogging              (Default: false) Enable trace logging. Extremely verbose.
+
+--smtpport                  (Default: 25) Backup summary notification email: SMTP port.
+
+--smtphost                  Backup summary notification email: SMTP server name.
+
+--smtpfromaddress           Backup summary notification email: SMTP from address.
+
+--smtpfromname              Backup summary notification email: SMTP from name.
+
+--smtptoaddress             Backup summary notification email: SMTP to address.
+
+--smtpusername              Backup summary notification email: SMTP username.
+
+--smtppassword              Backup summary notification email: SMTP password.
+
+--smtpenablessl             (Default: false) Backup summary notification email: SMTP over SSL.
+
+--help                      Display this help screen.
+
+--version                   Display version information.
+````
+
 Basic:
 ```
 ACCBackup.exe --backupdirectory "C:\ACCBackup" --clientid "DRO4zxzt71HCkL34cn2tAUSRS0OQGaRT" --clientsecret "tFRHKhuIrGQUi5d3" --accountid "9b3cc923-d920-4fee-ae91-5e9c8e4040rb"

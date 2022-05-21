@@ -32,12 +32,12 @@ public class CommandLineArgs
     [Option(Required = false, Default = 1, HelpText = "Number of backups to to maintain.")]
     public int BackupsToRotate { get; set; }
     [Option("projectstobackup", Required = false, Separator = ',',
-        HelpText = "Comma separated list of project names to backup. If none given, all projects will be backed up.")]
+        HelpText = "Comma separated list of project names OR project ids to backup. If none given, all projects will be backed up.")]
     public IEnumerable<string> ProjectsToBackup { get; set; }
 
     [Option("projectstoexclude", Required = false, Separator = ',',
         HelpText =
-            "Comma separated list of project names to exclude from the backup. Takes priority over 'projectstobackup'.")]
+            "Comma separated list of project names OR project ids to exclude from the backup. Takes priority over 'projectstobackup'.")]
     public IEnumerable<string> ProjectsToExclude { get; set; }
     [Option(Required = false, Default = false, HelpText = "Enable debug logging. Verbose.")]
     public bool DebugLogging { get; set; }
