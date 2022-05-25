@@ -167,8 +167,8 @@ public class Backup : IBackup
         var summary = new List<string> { $"  => {GetBackupSummaryHeader(projects)}" };
         summary.AddRange(projects.Select(GetBackupSummaryLine));
         decimal totalApiReportedStorageSizeInMb =
-            Math.Round(projects.SelectMany(p => p.FilesRecursive).Select(f => f.ApiReportedStorageSizeInMb).Sum(), 2);
-        decimal totalFileSizeOnDiskInMb = Math.Round(projects.SelectMany(p => p.FilesRecursive).Select(f => f.FileSizeOnDiskInMb ?? 0).Sum(), 2);
+            projects.SelectMany(p => p.FilesRecursive).Select(f => f.ApiReportedStorageSizeInMb).Sum();
+        decimal totalFileSizeOnDiskInMb = projects.SelectMany(p => p.FilesRecursive).Select(f => f.FileSizeOnDiskInMb).Sum();
         var ts = (TimeSpan)(projects[^1].BackupFinishedAt - projects[0].BackupStartedAt);
         var backupDuration = ts.ToString(@"hh\:mm\:ss");
         summary.Add(@$"  => Backed up {totalFileSizeOnDiskInMb}/{totalApiReportedStorageSizeInMb} MB in {backupDuration} to {Config.BackupDirectory}");
@@ -186,10 +186,10 @@ public class Backup : IBackup
         {
             throw new NullReferenceException("Cannot get backup summary with null BackupStartedAt or BackupFinishedAt");
         }
-        
+
         decimal totalStorageSizeInMb =
-            Math.Round(projects.SelectMany(p => p.FilesRecursive).Select(f => f.ApiReportedStorageSizeInMb).Sum(), 2);
-        decimal totalFileSizeOnDiskInMb = Math.Round(projects.SelectMany(p => p.FilesRecursive).Select(f => f.FileSizeOnDiskInMb ?? 0).Sum(), 2);
+            projects.SelectMany(p => p.FilesRecursive).Select(f => f.ApiReportedStorageSizeInMb).Sum();
+        decimal totalFileSizeOnDiskInMb = projects.SelectMany(p => p.FilesRecursive).Select(f => f.FileSizeOnDiskInMb).Sum();
         var ts = (TimeSpan)(projects[^1].BackupFinishedAt - projects[0].BackupStartedAt);
         var backupDuration = ts.ToString(@"hh\:mm\:ss");
         List<string> backupSummaryLines = projects.Select(GetBackupSummaryLine).ToList();
@@ -208,8 +208,9 @@ public class Backup : IBackup
             throw new NullReferenceException("Cannot get backup summary with null BackupStartedAt or BackupFinishedAt");
         }
 
-        decimal totalApiReportedStorageSizeInMb = Math.Round(project.FilesRecursive.Select(f => f.ApiReportedStorageSizeInMb).Sum(), 2);
-        decimal totalFileSizeOnDiskInMb = Math.Round(project.FilesRecursive.Select(f => f.FileSizeOnDiskInMb ?? 0).Sum(), 2);
+        decimal totalApiReportedStorageSizeInMb =
+            project.FilesRecursive.Select(f => f.ApiReportedStorageSizeInMb).Sum();
+        decimal totalFileSizeOnDiskInMb = project.FilesRecursive.Select(f => f.FileSizeOnDiskInMb).Sum();
         var ts = (TimeSpan)(project.BackupFinishedAt - project.BackupStartedAt);
         var backupDuration = ts.ToString(@"hh\:mm\:ss");
         int totalFiles = project.FilesRecursive.Count();

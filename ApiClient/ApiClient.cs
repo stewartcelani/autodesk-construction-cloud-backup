@@ -43,7 +43,7 @@ public class ApiClient : IApiClient
         {
             await System.IO.File.WriteAllBytesAsync(downloadPath, Array.Empty<byte>(), ct);
             file.FileInfo = new FileInfo(downloadPath);
-            file.FileSizeOnDiskInMb = (decimal)Math.Round((((file.FileInfo.Length) / 1024f) / 1024f), 2);
+            file.FileSizeOnDisk = file.FileInfo.Length;
             Config.Logger?.Info($"{file.FileInfo.FullName} ({file.FileSizeOnDiskInMb} MB)");
             return file.FileInfo;
         }
@@ -55,15 +55,15 @@ public class ApiClient : IApiClient
             await using Stream stream = await Config.HttpClient.GetStreamAsync(file.DownloadUrl, ct);
             await using FileStream fileStream = new(downloadPath, FileMode.Create);
             await stream.CopyToAsync(fileStream, ct);
+            file.FileSizeOnDisk = fileStream.Length;
             file.FileInfo = new FileInfo(downloadPath);
-            file.FileSizeOnDiskInMb = (decimal)Math.Round((((file.FileInfo.Length) / 1024f) / 1024f), 2);
-            if (file.FileSizeOnDiskInMb == file.ApiReportedStorageSizeInMb)
+            if (file.FileSizeOnDisk == file.StorageSize)
             {
                 Config.Logger?.Debug($"{file.FileInfo.FullName} ({file.FileSizeOnDiskInMb} MB)");
             }
             else
             {
-                Config.Logger?.Warn(@$"{file.FileInfo.FullName} ({file.FileSizeOnDiskInMb}/{file.ApiReportedStorageSizeInMb} MB) - MISMATCH BETWEEN SIZE ON DISK AND SIZE REPORTED BY AUTODESK API");
+                Config.Logger?.Warn(@$"{file.FileInfo.FullName} ({file.FileSizeOnDiskInMb}/{file.ApiReportedStorageSizeInMb} bytes) (Mismatch between size reported by API and size downloaded to disk)");
             }
             return file.FileInfo;
         });

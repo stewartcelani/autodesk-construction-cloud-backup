@@ -15,7 +15,7 @@ public class File
     public string DisplayName { get; set; }
     public DateTime CreateTime { get; set; }
     public string CreateUserId { get; set; }
-    public int StorageSize { get; set; }
+    public long StorageSize { get; set; }
     public string CreateUserName { get; set; }
     public bool Hidden { get; set; }
     public DateTime LastModifiedTime { get; set; }
@@ -37,8 +37,8 @@ public class File
     public int DownloadAttempts { get; set; } = 0;
     public FileInfo? FileInfo { get; set; }
     public bool Downloaded => FileInfo != null;
-    public decimal? FileSizeOnDiskInMb { get; set; }
-
+    public long FileSizeOnDisk { get; set; } = 0; // Bytes
+    public decimal FileSizeOnDiskInMb => (decimal)Math.Round((((FileSizeOnDisk) / 1024f) / 1024f), 2);
     public string GetPath(string delimiter = @"\")
     {
         return $"{ParentFolder.GetPath(delimiter)}{delimiter}{Name}";

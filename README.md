@@ -6,28 +6,26 @@ The only products on the market at the time were $6k AUD per year, took 15-20 ho
 
 By default, ACCBackup will backup all projects in your account.
 
-The end result, from an IT managmenet perspective, will be setting up 3 scheduled tasks that will enable 5x daily backups, 4x weekly backups, 12x monthly backups that will rotate accordingly.
+It is used daily to backup 100~ projects (100 GB~) in 3 hours, 30 minutes.
 
-It is used daily to backup 70~ projects (100 GB~) in 3 hours:15 minutes.
+### Prerequities
+1. Create an app via https://forge.autodesk.com/. At the time of writing all the APIs the app we are creating will use are free.
+2. You will need the Client ID, Client Secret, App Name = "Backup", Descripton = "Backup", Callback URL: point to your business URL but it is not important (this is for 3 legged auth and we only use 2 legged), and "APIs this app will be able to access": Autodesk Construction Cloud API, BIM 360 API, Data Management API.
+3. Enable Custom Integrations on your Autodesk admin account (if you don't see the tab email autodesk support as [this article](https://knowledge.autodesk.com/support/bim-360/learn-explore/caas/CloudHelp/cloudhelp/ENU/BIM360D-Administration/files/About-Account-Admin/GUID-0C83B441-C611-4574-8DA0-45D5CFC235FA-html.html) describes -- just say you want to build a custom integration)
+4. From Accounts Admin -> Settings -> Custom Integrations
+5. Add Custom Integration -> provide Client ID and App Name.
+6. Once this is done you will have a forge app with clientid & clientsecret that will be approved for your accountid.
+
+NOTE: The above steps (roughly) mapped onto pure Autodesk Construction Cloud (the new Autodesk model/signup process) projects and the backup still worked.
 
 ### Install
 - Install latest [.NET Runtime 6.X.X](https://dotnet.microsoft.com/en-us/download/dotnet/6.0) -- only the console version is required ("The .NET Runtime contains just the components needed to run a console app. Typically, you'd also install either the ASP.NET Core Runtime or .NET Desktop Runtime.")
 - Download the .zip via [the releases tab](https://github.com/stewartcelani/autodesk-construction-cloud-backup/releases)
-- Unzip and run, log files will be places in a "Logs" directory in whatever directory ACCBackup.exe is run from
-
-### Prerequities
-1. Create an app via https://forge.autodesk.com/. Using a trial is fine. At the time of writing all the APIs the app we are creating will use are free and the signup process doesn't require any payment details. When the trial expires your app will keep working.
-2. You will need the Client ID, Client Secret, App Name = "Backup", Descripton = "Backup", Callback URL: point to your business URL but it is not important (this is for 3 legged auth and we only use 2 legged), and "APIs this app will be able to access": Autodesk Construction Cloud API, BIM 360 API, Data Management API.
-3. Enable Custom Integrations on your Autodesk admin account (if you don't see the tab email autodesk support as the article describes -- it's preferable if you don't mention ACCBackup specifically, just say you want to build a custom integration -- note: it is normal not to see the tab, dont panic): https://knowledge.autodesk.com/support/bim-360/learn-explore/caas/CloudHelp/cloudhelp/ENU/BIM360D-Administration/files/About-Account-Admin/GUID-0C83B441-C611-4574-8DA0-45D5CFC235FA-html.html
-4. From Accounts Admin (admin.b360.autodesk.com) -> Settings -> Custom Integrations
-5. Add Custom Integration -> you'll be asked for Client ID and App Name but that is about it.
-6. Once this is done you will have a forge app with clientid & clientsecret that will be approved for your accountid.
-
-NOTE: The above steps (roughly) mapped onto pure Autodesk Construction Cloud (the new Autodesk model/signup process) projects and the backup still worked. Currently, from what I see, they are still internally mapping projects with "b.{projectId}" but that may change. ACCBackup supports the --hubid flag to explicitly specify "b.{accountId}" or just "{accountId}".
+- Unzip and run (see examples below)
 
 ### Examples
 
---help
+ACCBackup.exe --help
 ````
 --backupdirectory           Required. Backup directory.
 
