@@ -8,14 +8,12 @@ public class ApiClientConfiguration : ApiClientOptions
     public string ClientId { get; }
     public string ClientSecret { get; }
     public string AccountId { get; }
-    public string HubId { get; set; }
     public AsyncRetryPolicy RetryPolicy { get; set; }
-    public ApiClientConfiguration(string clientId, string clientSecret, string accountId, string hubId)
+    public ApiClientConfiguration(string clientId, string clientSecret, string accountId)
     {
         ClientId = clientId;
         ClientSecret = clientSecret;
         AccountId = accountId;
-        HubId = hubId;
         RetryPolicy = GetRetryPolicy(RetryAttempts, InitialRetryInSeconds);
     }
 

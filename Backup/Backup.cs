@@ -95,14 +95,13 @@ public class Backup : IBackup
 
     private void LogBackupSummary(List<ProjectBackup> projects)
     {
-
         var summary = new List<string>
         {
             "=================================================================================",
             " => BACKUP SUMMARY",
             "================================================================================="
         };
-        summary.AddRange(GetBackupSummary(projects));    
+        summary.AddRange(GetBackupSummary(projects));
         summary.Add("=================================================================================");
         foreach (string s in summary)
         {
@@ -168,10 +167,12 @@ public class Backup : IBackup
         summary.AddRange(projects.Select(GetBackupSummaryLine));
         decimal totalApiReportedStorageSizeInMb =
             projects.SelectMany(p => p.FilesRecursive).Select(f => f.ApiReportedStorageSizeInMb).Sum();
-        decimal totalFileSizeOnDiskInMb = projects.SelectMany(p => p.FilesRecursive).Select(f => f.FileSizeOnDiskInMb).Sum();
+        decimal totalFileSizeOnDiskInMb =
+            projects.SelectMany(p => p.FilesRecursive).Select(f => f.FileSizeOnDiskInMb).Sum();
         var ts = (TimeSpan)(projects[^1].BackupFinishedAt - projects[0].BackupStartedAt);
         var backupDuration = ts.ToString(@"hh\:mm\:ss");
-        summary.Add(@$"  => Backed up {totalFileSizeOnDiskInMb}/{totalApiReportedStorageSizeInMb} MB in {backupDuration} to {Config.BackupDirectory}");
+        summary.Add(
+            @$"  => Backed up {totalFileSizeOnDiskInMb}/{totalApiReportedStorageSizeInMb} MB in {backupDuration} to {Config.BackupDirectory}");
         return summary;
     }
 
@@ -187,9 +188,8 @@ public class Backup : IBackup
             throw new NullReferenceException("Cannot get backup summary with null BackupStartedAt or BackupFinishedAt");
         }
 
-        decimal totalStorageSizeInMb =
-            projects.SelectMany(p => p.FilesRecursive).Select(f => f.ApiReportedStorageSizeInMb).Sum();
-        decimal totalFileSizeOnDiskInMb = projects.SelectMany(p => p.FilesRecursive).Select(f => f.FileSizeOnDiskInMb).Sum();
+        decimal totalFileSizeOnDiskInMb =
+            projects.SelectMany(p => p.FilesRecursive).Select(f => f.FileSizeOnDiskInMb).Sum();
         var ts = (TimeSpan)(projects[^1].BackupFinishedAt - projects[0].BackupStartedAt);
         var backupDuration = ts.ToString(@"hh\:mm\:ss");
         List<string> backupSummaryLines = projects.Select(GetBackupSummaryLine).ToList();
@@ -198,7 +198,7 @@ public class Backup : IBackup
         int errorCount = backupSummaryLines.Count(s => s.Contains("[ERROR]"));
 
         return
-            @$"ACCBackup: {projects.Count} projects ({successCount} success, {partialFailCount} partial fail, {errorCount} error) - {totalFileSizeOnDiskInMb/totalStorageSizeInMb} MB in {backupDuration} ";
+            @$"ACCBackup: {projects.Count} projects ({successCount} success, {partialFailCount} partial fail, {errorCount} error) - {totalFileSizeOnDiskInMb} MB in {backupDuration} ";
     }
 
     private static string GetBackupSummaryLine(ProjectBackup project)
@@ -219,133 +219,146 @@ public class Backup : IBackup
         int foldersCreated = project.SubfoldersRecursive.Select(f => f.Created).Count();
         bool allFilesDownloaded = project.FilesRecursive.All(f => f.Downloaded);
         bool allFoldersCreated = project.SubfoldersRecursive.All(f => f.Created);
+        bool totalFileSizeOnDiskMatchesFileSizeReportedByApi =
+            totalFileSizeOnDiskInMb == totalApiReportedStorageSizeInMb;
         var summary = string.Empty;
-        if (allFilesDownloaded && allFoldersCreated)
+        if (allFilesDownloaded && allFoldersCreated && totalFileSizeOnDiskMatchesFileSizeReportedByApi)
         {
-            summary += "  + [SUCCESS] ";
-        }
-        else if (filesDownloaded > 0)
-        {
-            summary += "  + [PARTIAL FAIL] ";
+            summary +=
+                @$"  + [SUCCESS] {project.Name} ({project.ProjectId}) - {totalFileSizeOnDiskInMb} MB in {backupDuration} - {filesDownloaded} files backed up in {foldersCreated} folders";
         }
         else
         {
-            summary += "  + [ERROR] ";
-        }
+            if (filesDownloaded > 0)
+            {
+                summary += "  + [PARTIAL FAIL] ";
+            }
+            else
+            {
+                summary += "  + [ERROR] ";
+            }
 
-        summary +=
-            @$"{project.Name} ({project.ProjectId}) - {totalFileSizeOnDiskInMb}/{totalApiReportedStorageSizeInMb} MB in {backupDuration} - {filesDownloaded}/{totalFiles} files backed up in {foldersCreated}/{totalFolders} folders";
+            summary +=
+                @$"{project.Name} ({project.ProjectId}) - {totalFileSizeOnDiskInMb}/{totalApiReportedStorageSizeInMb} MB in {backupDuration} - {filesDownloaded}/{totalFiles} files backed up in {foldersCreated}/{totalFolders} folders";
+        }
         return summary;
+
     }
 
 
     private void LogBackupSummaryLine(ProjectBackup project)
-    {
-        string summary = GetBackupSummaryLine(project);
-        if (summary.Contains("[SUCCESS]"))
         {
-            Logger.Info(summary);
-        }
-        else if (summary.Contains("[PARTIAL FAIL]"))
-        {
-            Logger.Warn(summary);
-        }
-        else
-        {
-            Logger.Error(summary);
-        }
-    }
-
-    private void LogProjectsSelectedForBackup(List<ProjectBackup> projects)
-    {
-        Logger.Info("=================================================================================");
-        Logger.Info($"=> Found {projects.Count} projects to backup:");
-        foreach (ProjectBackup project in projects)
-        {
-            Logger.Info($"    - {project.Name} ({project.ProjectId})");
-        }
-        Logger.Info("=================================================================================");
-    }
-
-    private void RotateBackupDirectories()
-    {
-        Logger.Debug("Rotating backup directories.");
-        do
-        {
-            List<DirectoryInfo> backupDirectories = GetDirectories(Config.BackupDirectory);
-            Logger.Trace(
-                $"Root backup directory ({Config.BackupDirectory}) contains {backupDirectories.Count}/{Config.BackupsToRotate} directories");
-            if (backupDirectories.Count < Config.BackupsToRotate)
+            string summary = GetBackupSummaryLine(project);
+            if (summary.Contains("[SUCCESS]"))
             {
-                break;
+                Logger.Info(summary);
+            }
+            else if (summary.Contains("[PARTIAL FAIL]"))
+            {
+                Logger.Warn(summary);
+            }
+            else
+            {
+                Logger.Error(summary);
+            }
+        }
+
+        private void LogProjectsSelectedForBackup(List<ProjectBackup> projects)
+        {
+            Logger.Info("=================================================================================");
+            Logger.Info($"=> Found {projects.Count} projects to backup:");
+            foreach (ProjectBackup project in projects)
+            {
+                Logger.Info($"    - {project.Name} ({project.ProjectId})");
             }
 
-            DirectoryInfo oldestDirectory = backupDirectories.MinBy(x => x.CreationTime)!;
-            Logger.Trace($"Deleting oldest backup directory {oldestDirectory.FullName}");
-            oldestDirectory.Delete(true);
-        } while (true);
-
-        Config.BackupDirectory = Path.Combine(Config.BackupDirectory, DateTime.Now.ToString("yyyy-MM-dd_HH-mm"));
-        Logger.Trace($"Exited backup rotation while loop with Config.BackupDirectory: {Config.BackupDirectory}.");
-    }
-
-    private static List<DirectoryInfo> GetDirectories(string path)
-    {
-        if (!Directory.Exists(path))
-        {
-            Directory.CreateDirectory(path);
+            Logger.Info("=================================================================================");
         }
 
-        string[] backupDirectoriesArr = Directory.GetDirectories(path);
-        return backupDirectoriesArr.Select(p => new DirectoryInfo(p)).ToList();
-    }
-
-
-    /*
-     * Filters down ApiClient.GetProjects() (all projects) based on commandline parameters --projectstobackup
-     * and --projectstoexclude. Will filter based on either project name or project id. As project name can change
-     * the project id is the recommended way.
-     */
-    private List<Project> FilterProjects(IEnumerable<Project> projects)
-    {
-        List<Project> filteredProjects = new();
-        List<string> toBackup = new();
-        foreach (string s in Config.ProjectsToBackup.ConvertAll(x => x.ToLower()))
+        private void RotateBackupDirectories()
         {
-            toBackup.Add(s);
-            toBackup.Add($"b.{s}"); // ProjectId from Autodesk API will usually be b.GUID even if, in the web browser, the URL/ID contains just GUID. This will allow users to just enter a GUID in --projectstobackup or --projectstoexclude flag without worrying about quirks of the API.
-        }
-        List<string> toExclude = new();
-        foreach (string s in Config.ProjectsToExclude.ConvertAll(x => x.ToLower()))
-        {
-            toExclude.Add(s);
-            toExclude.Add($"b.{s}");
-        }
-        string[] projectsToBackup = toBackup.ToArray();
-        string[] projectsToExclude = toExclude.ToArray();
-        foreach (Project project in projects.Where(project => project.Name != "Sample Project"))
-        {
-            if (Config.ProjectsToExclude.Count > 0)
+            Logger.Debug("Rotating backup directories.");
+            do
             {
-                if (projectsToExclude.Contains(project.Name.ToLower()) || projectsToExclude.Contains(project.ProjectId.ToLower()))
+                List<DirectoryInfo> backupDirectories = GetDirectories(Config.BackupDirectory);
+                Logger.Trace(
+                    $"Root backup directory ({Config.BackupDirectory}) contains {backupDirectories.Count}/{Config.BackupsToRotate} directories");
+                if (backupDirectories.Count < Config.BackupsToRotate)
                 {
-                    continue;
+                    break;
                 }
+
+                DirectoryInfo oldestDirectory = backupDirectories.MinBy(x => x.CreationTime)!;
+                Logger.Trace($"Deleting oldest backup directory {oldestDirectory.FullName}");
+                oldestDirectory.Delete(true);
+            } while (true);
+
+            Config.BackupDirectory = Path.Combine(Config.BackupDirectory, DateTime.Now.ToString("yyyy-MM-dd_HH-mm"));
+            Logger.Trace($"Exited backup rotation while loop with Config.BackupDirectory: {Config.BackupDirectory}.");
+        }
+
+        private static List<DirectoryInfo> GetDirectories(string path)
+        {
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
             }
 
-            if (Config.ProjectsToBackup.Count > 0)
+            string[] backupDirectoriesArr = Directory.GetDirectories(path);
+            return backupDirectoriesArr.Select(p => new DirectoryInfo(p)).ToList();
+        }
+
+
+        /*
+         * Filters down ApiClient.GetProjects() (all projects) based on commandline parameters --projectstobackup
+         * and --projectstoexclude. Will filter based on either project name or project id. As project name can change
+         * the project id is the recommended way.
+         */
+        private List<Project> FilterProjects(IEnumerable<Project> projects)
+        {
+            List<Project> filteredProjects = new();
+            List<string> toBackup = new();
+            foreach (string s in Config.ProjectsToBackup.ConvertAll(x => x.ToLower()))
             {
-                if (projectsToBackup.Contains(project.Name.ToLower()) || projectsToBackup.Contains(project.ProjectId.ToLower()))
+                toBackup.Add(s);
+                toBackup.Add(
+                    $"b.{s}"); // ProjectId from Autodesk API will usually be b.GUID even if, in the web browser, the URL/ID contains just GUID. This will allow users to just enter a GUID in --projectstobackup or --projectstoexclude flag without worrying about quirks of the API.
+            }
+
+            List<string> toExclude = new();
+            foreach (string s in Config.ProjectsToExclude.ConvertAll(x => x.ToLower()))
+            {
+                toExclude.Add(s);
+                toExclude.Add($"b.{s}");
+            }
+
+            string[] projectsToBackup = toBackup.ToArray();
+            string[] projectsToExclude = toExclude.ToArray();
+            foreach (Project project in projects.Where(project => project.Name != "Sample Project"))
+            {
+                if (Config.ProjectsToExclude.Count > 0)
+                {
+                    if (projectsToExclude.Contains(project.Name.ToLower()) ||
+                        projectsToExclude.Contains(project.ProjectId.ToLower()))
+                    {
+                        continue;
+                    }
+                }
+
+                if (Config.ProjectsToBackup.Count > 0)
+                {
+                    if (projectsToBackup.Contains(project.Name.ToLower()) ||
+                        projectsToBackup.Contains(project.ProjectId.ToLower()))
+                    {
+                        filteredProjects.Add(project);
+                    }
+                }
+                else
                 {
                     filteredProjects.Add(project);
                 }
             }
-            else
-            {
-                filteredProjects.Add(project);
-            }
-        }
 
-        return filteredProjects;
+            return filteredProjects;
+        }
     }
-}

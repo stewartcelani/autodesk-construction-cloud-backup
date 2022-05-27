@@ -124,7 +124,7 @@ ACCBackup.exe --projectstoexclude "Test Project, 7468066c-53e6-4acf-8086-6b5fce0
 - Or/and email bold.oil7762@fastmail.com with your log file attached.
 
 ### ApiClient
-ACCBackup is designed around an ApiClient class library I wrote that does 99% of the heavy lifting.
+ACCBackup is designed around an ApiClient class library I wrote that does all the heavy lifting.
 This makes it very easy for you to take the class library and do your own thing with it if needed.
 Below is a copy of ApiClient.UsageExample:Program.cs
 

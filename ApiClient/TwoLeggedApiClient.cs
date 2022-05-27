@@ -39,7 +39,7 @@ public class TwoLeggedApiClient :
 
     public ICreateApiClientStage WithOptions(Action<ApiClientOptions> config)
     {
-        var configuration = new ApiClientConfiguration(_clientId, _clientSecret, _accountId, string.Empty);
+        var configuration = new ApiClientConfiguration(_clientId, _clientSecret, _accountId);
         config?.Invoke(configuration);
         configuration.RetryPolicy =
             configuration.GetRetryPolicy(configuration.RetryAttempts, configuration.InitialRetryInSeconds);
@@ -49,7 +49,7 @@ public class TwoLeggedApiClient :
 
     public ApiClient Create()
     {
-        _configuration ??= new ApiClientConfiguration(_clientId, _clientSecret, _accountId, string.Empty);
+        _configuration ??= new ApiClientConfiguration(_clientId, _clientSecret, _accountId);
         if (string.IsNullOrEmpty(_configuration.HubId))
         {
             _configuration.HubId = $"b.{_configuration.AccountId}";

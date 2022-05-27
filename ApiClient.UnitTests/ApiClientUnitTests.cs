@@ -73,6 +73,7 @@ public class ApiClientUnitTests
             .ForAccount(accountId)
             .WithOptions(options =>
             {
+                options.HubId = accountId;
                 options.HttpClient = httpClient;
                 options.Logger = logger;
                 options.RetryAttempts = 20;
@@ -87,6 +88,7 @@ public class ApiClientUnitTests
         sut.Config.ClientId.Should().Be(clientId);
         sut.Config.ClientSecret.Should().Be(clientSecret);
         sut.Config.AccountId.Should().Be(accountId);
+        sut.Config.HubId.Should().Be(accountId);
         sut.Config.HttpClient.BaseAddress.Should().Be(baseAddress);
         sut.Config.Logger.Should().BeOfType<NLogLogger>();
         sut.Config.Logger.Config.LogLevel.Should().Be(LogLevel.Fatal);
