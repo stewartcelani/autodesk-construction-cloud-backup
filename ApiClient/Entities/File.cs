@@ -1,6 +1,4 @@
-﻿using ACC.ApiClient.Entities;
-
-namespace ACC.ApiClient.Entities;
+﻿namespace ACC.ApiClient.Entities;
 
 public class File
 {
@@ -31,14 +29,15 @@ public class File
     /*
      * Properties not directly from the Autodesk Api are below
      */
-    public decimal ApiReportedStorageSizeInMb => (decimal)Math.Round((((StorageSize) / 1024f) / 1024f), 2);
+    public decimal ApiReportedStorageSizeInMb => (decimal)Math.Round(StorageSize / 1024f / 1024f, 2);
     public Folder ParentFolder { get; set; }
     public string ProjectId { get; set; }
     public int DownloadAttempts { get; set; } = 0;
     public FileInfo? FileInfo { get; set; }
     public bool Downloaded => FileInfo != null;
     public long FileSizeOnDisk { get; set; } = 0; // Bytes
-    public decimal FileSizeOnDiskInMb => (decimal)Math.Round((((FileSizeOnDisk) / 1024f) / 1024f), 2);
+    public decimal FileSizeOnDiskInMb => (decimal)Math.Round(FileSizeOnDisk / 1024f / 1024f, 2);
+
     public string GetPath(string delimiter = @"\")
     {
         return $"{ParentFolder.GetPath(delimiter)}{delimiter}{Name}";

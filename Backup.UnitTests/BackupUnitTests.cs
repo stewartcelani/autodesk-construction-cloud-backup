@@ -1,12 +1,9 @@
-using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Net.Http;
-using Xunit;
-using ACC.Backup;
 using FluentAssertions;
 using Library.Logger;
 using Polly.Retry;
+using Xunit;
 
 namespace ACC.Backup.UnitTests;
 
@@ -29,7 +26,6 @@ public class BackupUnitTests
     private const int InitialRetryInSeconds = 3;
     private const int MaxDegreeOfParallelism = 4;
 
-    private readonly List<string> _projectsList = new () { "Test Project", "7468066c-53e6-4acf-8086-6b5fce0048d6" };
     private readonly string[] _args =
     {
         "--backupdirectory", BackupDirectory, "--clientid", ClientId, "--clientsecret", ClientSecret, "--accountid",
@@ -42,7 +38,9 @@ public class BackupUnitTests
         "--retryattempts", $"{RetryAttempts}", "--initialretryinseconds", $"{InitialRetryInSeconds}",
         "--maxdegreeofparallelism", $"{MaxDegreeOfParallelism}"
     };
-    
+
+    private readonly List<string> _projectsList = new() { "Test Project", "7468066c-53e6-4acf-8086-6b5fce0048d6" };
+
     [Fact]
     public void BackupConfiguration_Should_Parse_CommandLineArgs()
     {

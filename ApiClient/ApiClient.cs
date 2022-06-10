@@ -1,7 +1,8 @@
 ﻿using System.Net;
+using System.Net.Http.Headers;
 using ACC.ApiClient.Entities;
-using Newtonsoft.Json;
 using ACC.ApiClient.RestApiResponses;
+using Newtonsoft.Json;
 using File = ACC.ApiClient.Entities.File;
 
 namespace ACC.ApiClient;
@@ -11,83 +12,12 @@ public class ApiClient : IApiClient
     private string? _accessToken;
     private DateTime? _accessTokenExpiresAt;
 
-    public ApiClientConfiguration Config { get; private set; }
-
     public ApiClient(ApiClientConfiguration config)
     {
         Config = config;
     }
 
-    private static void CreateDirectory(Folder folder, string rootDirectory)
-    {
-        if (folder.DirectoryInfo is not null) return;
-        string path = Path.Combine(rootDirectory, folder.GetPath()[1..]);
-        folder.DirectoryInfo = Directory.CreateDirectory(path);
-    }
-
-    public static void CreateDirectories(IEnumerable<Folder> folders, string rootDirectory)
-    {
-        foreach (Folder folder in folders)
-        {
-            CreateDirectory(folder, rootDirectory);
-        }
-    }
-
-    public async Task<FileInfo> DownloadFile(
-        File file, string rootDirectory, CancellationToken ct = default)
-    {
-        CreateDirectory(file.ParentFolder, rootDirectory);
-        string downloadPath = Path.Combine(rootDirectory, file.GetPath()[1..]);
-        
-        if (Config.DryRun)
-        {
-            await System.IO.File.WriteAllBytesAsync(downloadPath, Array.Empty<byte>(), ct);
-            file.FileInfo = new FileInfo(downloadPath);
-            file.FileSizeOnDisk = file.FileInfo.Length;
-            Config.Logger?.Info($"{file.FileInfo.FullName} ({file.FileSizeOnDiskInMb} MB)");
-            return file.FileInfo;
-        }
-
-        return await Config.RetryPolicy.ExecuteAsync(async () =>
-        {
-            await EnsureAccessToken();
-            file.DownloadAttempts++;
-            await using Stream stream = await Config.HttpClient.GetStreamAsync(file.DownloadUrl, ct);
-            await using FileStream fileStream = new(downloadPath, FileMode.Create);
-            await stream.CopyToAsync(fileStream, ct);
-            file.FileSizeOnDisk = fileStream.Length;
-            file.FileInfo = new FileInfo(downloadPath);
-            if (file.FileSizeOnDisk == file.StorageSize)
-            {
-                Config.Logger?.Debug($"{file.FileInfo.FullName} ({file.FileSizeOnDiskInMb} MB)");
-            }
-            else
-            {
-                Config.Logger?.Warn(@$"{file.FileInfo.FullName} ({file.FileSizeOnDiskInMb}/{file.ApiReportedStorageSizeInMb} bytes) (Mismatch between size reported by API and size downloaded to disk)");
-            }
-            return file.FileInfo;
-        });
-    }
-
-    public async Task<List<FileInfo>> DownloadFiles(
-        IEnumerable<File> fileList, string rootDirectory, CancellationToken ct = default)
-    {
-        List<FileInfo> fileInfoList = new();
-
-        var parallelOptions = new ParallelOptions()
-        {
-            CancellationToken = ct,
-            MaxDegreeOfParallelism = Config.MaxDegreeOfParallelism,
-        };
-
-        await Parallel.ForEachAsync(fileList, parallelOptions, async (file, ctx) =>
-        {
-            FileInfo fileInfo = await DownloadFile(file, rootDirectory, ctx);
-            fileInfoList.Add(fileInfo);
-        });
-
-        return fileInfoList;
-    }
+    public ApiClientConfiguration Config { get; }
 
     public async Task<Project> GetProject(string projectId, bool getRootFolderContents = false)
     {
@@ -151,19 +81,14 @@ public class ApiClient : IApiClient
                 throw new ArgumentNullException("projectsResponses");
             projectsResponses.Add(projectsResponse);
             if (projectsResponse.Links?.Next?.Href is not null)
-            {
                 projectsEndpoint = projectsResponse.Links.Next.Href;
-            }
             else
-            {
                 break;
-            }
         } while (true);
 
         var projects = new List<Project>();
         foreach (ProjectResponseProject project in projectsResponses.SelectMany(projectsResponse =>
                      projectsResponse.Data))
-        {
             projects.Add(new Project(this)
             {
                 ProjectId = project.Id,
@@ -174,7 +99,6 @@ public class ApiClient : IApiClient
                     ? await GetFolder(project.Id, project.Relationships.RootFolder.Data.Id)
                     : null
             });
-        }
 
         Config.Logger?.Debug($"Returning {projects.Count} projects.");
         return projects;
@@ -205,10 +129,7 @@ public class ApiClient : IApiClient
             throw new ArgumentNullException("folderResponse");
         string parentFolderId = folderResponse.Data.Relationships.Parent.Data.Id;
         Folder folder = MapFolderFromFolderContentsResponseData(projectId, parentFolderId, folderResponse.Data);
-        if (getFolderContents)
-        {
-            await GetFolderContents(folder);
-        }
+        if (getFolderContents) await GetFolderContents(folder);
 
         Config.Logger?.Debug($"Returning with folderId {folder.FolderId} and name {folder.Name}");
         return folder;
@@ -218,10 +139,7 @@ public class ApiClient : IApiClient
     {
         Config.Logger?.Trace("Top");
         await GetFolderContents(folder);
-        foreach (Folder folderFolder in folder.Subfolders)
-        {
-            await GetFolderContentsRecursively(folderFolder);
-        }
+        foreach (Folder folderFolder in folder.Subfolders) await GetFolderContentsRecursively(folderFolder);
 
         Config.Logger?.Debug($"Returning folder (id: {folder.FolderId}, name: {folder.Name}) with " +
                              $"{folder.Files.Count} files and {folder.Subfolders.Count} subfolders");
@@ -253,13 +171,9 @@ public class ApiClient : IApiClient
             var folderContentsResponse = JsonConvert.DeserializeObject<FolderContentsResponse>(responseString);
             folderContentsResponses.Add(folderContentsResponse);
             if (folderContentsResponse.Links.Next?.Href is not null)
-            {
                 folderContentsEndpoint = folderContentsResponse.Links.Next.Href;
-            }
             else
-            {
                 break;
-            }
         } while (true);
 
         folder.Files = (from response in folderContentsResponses
@@ -275,6 +189,71 @@ public class ApiClient : IApiClient
             select MapFolderFromFolderContentsResponseData(folder, data)).ToList();
 
         Config.Logger?.Trace($"Returning with {folder.Files.Count} files and {folder.Subfolders.Count} folders");
+    }
+
+    private static void CreateDirectory(Folder folder, string rootDirectory)
+    {
+        if (folder.DirectoryInfo is not null) return;
+        string path = Path.Combine(rootDirectory, folder.GetPath()[1..]);
+        folder.DirectoryInfo = Directory.CreateDirectory(path);
+    }
+
+    public static void CreateDirectories(IEnumerable<Folder> folders, string rootDirectory)
+    {
+        foreach (Folder folder in folders) CreateDirectory(folder, rootDirectory);
+    }
+
+    public async Task<FileInfo> DownloadFile(
+        File file, string rootDirectory, CancellationToken ct = default)
+    {
+        CreateDirectory(file.ParentFolder, rootDirectory);
+        string downloadPath = Path.Combine(rootDirectory, file.GetPath()[1..]);
+
+        if (Config.DryRun)
+        {
+            await System.IO.File.WriteAllBytesAsync(downloadPath, Array.Empty<byte>(), ct);
+            file.FileInfo = new FileInfo(downloadPath);
+            file.FileSizeOnDisk = file.FileInfo.Length;
+            Config.Logger?.Info($"{file.FileInfo.FullName} ({file.FileSizeOnDiskInMb} MB)");
+            return file.FileInfo;
+        }
+
+        return await Config.RetryPolicy.ExecuteAsync(async () =>
+        {
+            await EnsureAccessToken();
+            file.DownloadAttempts++;
+            await using Stream stream = await Config.HttpClient.GetStreamAsync(file.DownloadUrl, ct);
+            await using FileStream fileStream = new(downloadPath, FileMode.Create);
+            await stream.CopyToAsync(fileStream, ct);
+            file.FileSizeOnDisk = fileStream.Length;
+            file.FileInfo = new FileInfo(downloadPath);
+            if (file.FileSizeOnDisk == file.StorageSize)
+                Config.Logger?.Debug($"{file.FileInfo.FullName} ({file.FileSizeOnDiskInMb} MB)");
+            else
+                Config.Logger?.Warn(
+                    @$"{file.FileInfo.FullName} ({file.FileSizeOnDiskInMb}/{file.ApiReportedStorageSizeInMb} bytes) (Mismatch between size reported by API and size downloaded to disk)");
+            return file.FileInfo;
+        });
+    }
+
+    public async Task<List<FileInfo>> DownloadFiles(
+        IEnumerable<File> fileList, string rootDirectory, CancellationToken ct = default)
+    {
+        List<FileInfo> fileInfoList = new();
+
+        var parallelOptions = new ParallelOptions
+        {
+            CancellationToken = ct,
+            MaxDegreeOfParallelism = Config.MaxDegreeOfParallelism
+        };
+
+        await Parallel.ForEachAsync(fileList, parallelOptions, async (file, ctx) =>
+        {
+            FileInfo fileInfo = await DownloadFile(file, rootDirectory, ctx);
+            fileInfoList.Add(fileInfo);
+        });
+
+        return fileInfoList;
     }
 
     private Folder MapFolderFromFolderContentsResponseData(string projectId, string parentFolderId,
@@ -331,7 +310,7 @@ public class ApiClient : IApiClient
     private static File MapFileFromFolderContentsResponseIncluded(Folder parentFolder,
         FolderContentsResponseIncluded included)
     {
-        return new File()
+        return new File
         {
             FileId = included.Id,
             ProjectId = parentFolder.ProjectId,
@@ -365,7 +344,7 @@ public class ApiClient : IApiClient
             Config.Logger?.Trace("Access token expired or null, calling GetAccessToken");
             (_accessToken, _accessTokenExpiresAt) = await GetAccessToken();
             Config.HttpClient.DefaultRequestHeaders.Authorization =
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _accessToken);
+                new AuthenticationHeaderValue("Bearer", _accessToken);
         }
     }
 
@@ -398,7 +377,7 @@ public class ApiClient : IApiClient
         string accessToken = authResponse.AccessToken;
         int expiresIn = authResponse.ExpiresIn;
         double modifiedExpiresIn = expiresIn * 0.9;
-        DateTime accessTokenExpiresAt = (DateTime.Now).AddSeconds(modifiedExpiresIn);
+        DateTime accessTokenExpiresAt = DateTime.Now.AddSeconds(modifiedExpiresIn);
         Config.Logger?.Debug(
             $"Authenticated -- returning with accessToken: {accessToken}, accessTokenExpiresAt: {accessTokenExpiresAt:O}");
         return (accessToken, accessTokenExpiresAt);
@@ -407,7 +386,7 @@ public class ApiClient : IApiClient
     private void HandleUnsuccessfulStatusCode(string responseString, HttpResponseMessage response,
         string moreDetailsUrl)
     {
-        (HttpStatusCode statusCode, int statusCodeAsInt, Uri requestUri) = (response.StatusCode,
+        (HttpStatusCode statusCode, var statusCodeAsInt, Uri requestUri) = (response.StatusCode,
             (int)response.StatusCode, response.RequestMessage!.RequestUri!);
         if (statusCodeAsInt is >= 200 and <= 299) return;
         Config.Logger?.Trace($"Top after guard clause (status code: ${statusCodeAsInt})");
@@ -440,5 +419,4 @@ public class ApiClient : IApiClient
             }
         }
     }
-    
 }

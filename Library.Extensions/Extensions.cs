@@ -6,10 +6,7 @@ public static class Extensions
         Func<T, IEnumerable<T>> selector)
     {
         IEnumerable<T> recursiveFlatten = rootEnumerable.ToList();
-        if (recursiveFlatten.Any() == false)
-        {
-            return recursiveFlatten;
-        }
+        if (recursiveFlatten.Any() == false) return recursiveFlatten;
 
         IEnumerable<T> descendants = recursiveFlatten
             .SelectMany(selector)

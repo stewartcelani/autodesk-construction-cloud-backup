@@ -9,10 +9,10 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\ApiClient.UnitTests\ApiClient.UnitTests.csproj" />
-      <ProjectReference Include="..\ApiClient\ApiClient.csproj" />
-      <ProjectReference Include="..\Library.Extensions\Library.Extensions.csproj" />
-      <ProjectReference Include="..\Library.SecretsManager\Library.SecretsManager.csproj" />
+        <ProjectReference Include="..\ApiClient.UnitTests\ApiClient.UnitTests.csproj"/>
+        <ProjectReference Include="..\ApiClient\ApiClient.csproj"/>
+        <ProjectReference Include="..\Library.Extensions\Library.Extensions.csproj"/>
+        <ProjectReference Include="..\Library.SecretsManager\Library.SecretsManager.csproj"/>
     </ItemGroup>
 
 </Project>

@@ -7,9 +7,9 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using ACC.ApiClient.Entities;
-using Xunit;
 using FluentAssertions;
 using Library.SecretsManager;
+using Xunit;
 
 // ReSharper disable AsyncVoidLambda
 
@@ -18,9 +18,9 @@ namespace ACC.ApiClient.IntegrationTests;
 
 public class ApiClientIntegrationTests
 {
+    private readonly string _accountId;
     private readonly string _clientId;
     private readonly string _clientSecret;
-    private readonly string _accountId;
 
     public ApiClientIntegrationTests()
     {
@@ -36,8 +36,8 @@ public class ApiClientIntegrationTests
         const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
         const string clientSecret = "wE3GFhuIsGJEi3d4";
         const string accountId = "f33e018a-d1f5-4ef3-ae67-606de6aeed87";
-        const string forbiddenResponse = 
-            $@"{{ ""developerMessage"":""The client_id specified does not have access to the api product"", ""moreInfo"": ""https://forge.autodesk.com/en/docs/oauth/v2/developers_guide/error_handling/"", ""errorCode"": ""AUTH-001""}}";
+        const string forbiddenResponse =
+            @"{ ""developerMessage"":""The client_id specified does not have access to the api product"", ""moreInfo"": ""https://forge.autodesk.com/en/docs/oauth/v2/developers_guide/error_handling/"", ""errorCode"": ""AUTH-001""}";
         ApiClient sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
@@ -51,15 +51,15 @@ public class ApiClientIntegrationTests
             .Create();
 
         // Act
-        Func<Task> act = async() => await sut.GetProjects();
-        
+        Func<Task> act = async () => await sut.GetProjects();
+
         // Assert
         await act
             .Should()
             .ThrowAsync<HttpRequestException>()
             .Where(e => e.StatusCode == HttpStatusCode.Forbidden && e.Message == forbiddenResponse);
     }
-    
+
     [Fact]
     public async Task GetAccessToken_InvalidClientSecret_Should_Throw_401Unauthorized()
     {
@@ -67,8 +67,8 @@ public class ApiClientIntegrationTests
         string clientId = _clientId;
         const string clientSecret = "InvalidClientSecret";
         const string accountId = "IrrelevantToTest";
-        const string unauthorizedResponse = 
-            $@"{{""developerMessage"":""The client_id (application key)/client_secret are not valid"",""errorCode"":""AUTH-003"",""more info"":""https://forge.autodesk.com/en/docs/oauth/v2/developers_guide/error_handling/""}}";
+        const string unauthorizedResponse =
+            @"{""developerMessage"":""The client_id (application key)/client_secret are not valid"",""errorCode"":""AUTH-003"",""more info"":""https://forge.autodesk.com/en/docs/oauth/v2/developers_guide/error_handling/""}";
 
         ApiClient sut = TwoLeggedApiClient
             .Configure()
@@ -83,8 +83,8 @@ public class ApiClientIntegrationTests
             .Create();
 
         // Act
-        Func<Task> act = async() => await sut.GetProjects();
-        
+        Func<Task> act = async () => await sut.GetProjects();
+
         // Assert
         await act
             .Should()
@@ -111,7 +111,7 @@ public class ApiClientIntegrationTests
 
         // Act
         await sut.GetProjects();
-        
+
         // Assert
         initialAuthHeader.Should().BeNull();
         sut.Config.HttpClient.DefaultRequestHeaders.Authorization.Should().NotBeNull();
@@ -136,12 +136,12 @@ public class ApiClientIntegrationTests
 
         // Act
         List<Project> projects = await sut.GetProjects();
-        
+
         // Assert
         projects.Count.Should().BeGreaterOrEqualTo(1);
         projects.All(x => x.RootFolder == null).Should().BeTrue();
     }
-    
+
     [Fact]
     public async Task GetProjects_getRootFolderContents_True_Should_ReturnOneOrMoreProjects()
     {
@@ -160,12 +160,12 @@ public class ApiClientIntegrationTests
 
         // Act
         List<Project> projects = await sut.GetProjects(true);
-        
+
         // Assert
         projects.Count.Should().BeGreaterOrEqualTo(1);
         projects.All(x => x.RootFolder != null).Should().BeTrue();
     }
-    
+
     [Fact]
     public async Task Project_DownloadContentsRecursively_Should_DownloadContentsRecursively()
     {
@@ -190,14 +190,14 @@ public class ApiClientIntegrationTests
 
         // Act
         await sut.DownloadContentsRecursively(rootProjectDirectory);
-        
+
         // Assert
         sut.FilesRecursive.All(x => x.Downloaded).Should().BeTrue();
         sut.FilesRecursive.Count(x => x.Downloaded).Should().BeGreaterOrEqualTo(1);
         sut.SubfoldersRecursive.All(x => x.Created).Should().BeTrue();
         sut.SubfoldersRecursive.Count(x => x.Created).Should().BeGreaterOrEqualTo(1);
     }
-    
+
     [Fact]
     public async Task Folder_DownloadContentsRecursively_Should_DownloadContentsRecursively()
     {
@@ -220,17 +220,17 @@ public class ApiClientIntegrationTests
         string rootProjectDirectory = Path.Combine(rootBackupDirectory, Guid.NewGuid().ToString(), project.Name);
         await project.GetContentsRecursively();
         Folder sut = project.RootFolder;
-        
+
         // Act
         await sut.DownloadContentsRecursively(rootProjectDirectory);
-        
+
         // Assert
         sut.FilesRecursive.All(x => x.Downloaded).Should().BeTrue();
         sut.FilesRecursive.Count(x => x.Downloaded).Should().BeGreaterOrEqualTo(1);
         sut.SubfoldersRecursive.All(x => x.Created).Should().BeTrue();
         sut.SubfoldersRecursive.Count(x => x.Created).Should().BeGreaterOrEqualTo(1);
     }
-    
+
     [Fact]
     public async Task Folder_DownloadContents_Should_DownloadContents()
     {
@@ -255,16 +255,13 @@ public class ApiClientIntegrationTests
         Folder sut = await apiClient.GetFolder(projectId, folderId, true);
         int sutFiles = sut.Files.Count;
         string downloadPath = Path.Combine(rootBackupDirectory, Guid.NewGuid().ToString(), sut.Name);
-        
+
         // Act
         await sut.DownloadContents(downloadPath);
-        
+
         // Assert
         sut.FilesRecursive.All(x => x.Downloaded).Should().BeTrue();
         sut.FilesRecursive.Count(x => x.Downloaded).Should().Be(sutFiles);
         sut.Created.Should().BeTrue();
     }
-    
-    
-
 }

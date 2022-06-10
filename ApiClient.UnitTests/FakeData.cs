@@ -1,20 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
-using Bogus;
 using ACC.ApiClient.Entities;
+using Bogus;
 
 namespace ACC.ApiClient.UnitTests;
 
 public static class FakeData
 {
-    
     public static List<Folder> GetFakeFolders(int numberOfFolders, ApiClient apiClient)
     {
         var folderList = new List<Folder>();
-        for (int i = 0; i < numberOfFolders; i++)
-        {
-            folderList.Add(GetFakeFolder(apiClient));
-        }
+        for (var i = 0; i < numberOfFolders; i++) folderList.Add(GetFakeFolder(apiClient));
 
         return folderList;
     }
@@ -42,11 +38,11 @@ public static class FakeData
             ObjectCount = faker.Random.Number(0, 10)
         };
     }
-    
+
     public static File GetFakeFile(Folder? parentFolder = null)
     {
         var faker = new Faker();
-        return new File()
+        return new File
         {
             FileId = Guid.NewGuid().ToString(),
             ProjectId = Guid.NewGuid().ToString(),

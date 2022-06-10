@@ -3,7 +3,6 @@ using ACC.ApiClient.Entities;
 using Library.Logger;
 using Library.SecretsManager;
 using File = ACC.ApiClient.Entities.File;
-using LogLevel = Library.Logger.LogLevel;
 
 /*
  * Required parameters
@@ -35,7 +34,7 @@ ApiClient client = TwoLeggedApiClient
         options.HubId = $"b.{accountId}";
         options.HttpClient = new HttpClient();
         options.DryRun = false;
-        options.Logger = new NLogLogger(new NLogLoggerConfiguration()
+        options.Logger = new NLogLogger(new NLogLoggerConfiguration
         {
             LogLevel = LogLevel.Trace,
             LogToConsole = true,
@@ -50,10 +49,7 @@ ApiClient client = TwoLeggedApiClient
  * Getting all projects with above ApiClient
  */
 List<Project> projects = await client.GetProjects();
-foreach (Project p in projects)
-{
-  Console.WriteLine(p.Name);
-}
+foreach (Project p in projects) Console.WriteLine(p.Name);
 
 /*
  * Get project by ID
@@ -65,15 +61,9 @@ Project project = await client.GetProject("projectIdGoesHere");
  */
 await project.GetRootFolder();
 
-foreach (File f in project.RootFolder.Files)
-{
-  Console.WriteLine(f.Name);
-}
+foreach (File f in project.RootFolder.Files) Console.WriteLine(f.Name);
 
-foreach (Folder f in project.RootFolder.Subfolders)
-{
- Console.WriteLine(f.Name);
-}
+foreach (Folder f in project.RootFolder.Subfolders) Console.WriteLine(f.Name);
 
 /*
  * GetContents or GetContentsRecursively can be called on any folder
@@ -109,6 +99,6 @@ List<Project> allProjects = await client.GetProjects();
 var downloadRoot = @"C:\ExampleBackupDirectory";
 foreach (Project p in allProjects)
 {
- await p.GetContentsRecursively();
- await p.DownloadContentsRecursively(Path.Combine(downloadRoot, p.Name));
+    await p.GetContentsRecursively();
+    await p.DownloadContentsRecursively(Path.Combine(downloadRoot, p.Name));
 }

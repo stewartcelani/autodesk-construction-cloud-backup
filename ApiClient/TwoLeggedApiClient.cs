@@ -1,22 +1,25 @@
 ﻿namespace ACC.ApiClient;
 
-public class TwoLeggedApiClient : 
-    IClientIdSelectionStage, 
-    IClientSecretSelectionStage, 
+public class TwoLeggedApiClient :
+    IClientIdSelectionStage,
+    IClientSecretSelectionStage,
     IAccountIdSelectionStage,
     IOptionalConfigurationStage,
     ICreateApiClientStage
 {
+    private string _accountId;
     private string _clientId;
     private string _clientSecret;
-    private string _accountId;
     private ApiClientConfiguration? _configuration;
 
-    private TwoLeggedApiClient() {}
-
-    public static IClientIdSelectionStage Configure()
+    private TwoLeggedApiClient()
     {
-        return new TwoLeggedApiClient();
+    }
+
+    public IOptionalConfigurationStage ForAccount(string accountId)
+    {
+        _accountId = accountId;
+        return this;
     }
 
     public IClientSecretSelectionStage WithClientId(string clientId)
@@ -28,12 +31,6 @@ public class TwoLeggedApiClient :
     public IAccountIdSelectionStage AndClientSecret(string clientSecret)
     {
         _clientSecret = clientSecret;
-        return this;
-    }
-
-    public IOptionalConfigurationStage ForAccount(string accountId)
-    {
-        _accountId = accountId;
         return this;
     }
 
@@ -50,10 +47,12 @@ public class TwoLeggedApiClient :
     public ApiClient Create()
     {
         _configuration ??= new ApiClientConfiguration(_clientId, _clientSecret, _accountId);
-        if (string.IsNullOrEmpty(_configuration.HubId))
-        {
-            _configuration.HubId = $"b.{_configuration.AccountId}";
-        }
+        if (string.IsNullOrEmpty(_configuration.HubId)) _configuration.HubId = $"b.{_configuration.AccountId}";
         return new ApiClient(_configuration);
+    }
+
+    public static IClientIdSelectionStage Configure()
+    {
+        return new TwoLeggedApiClient();
     }
 }

@@ -22,6 +22,6 @@ public interface IOptionalConfigurationStage
 }
 
 public interface ICreateApiClientStage
-{ 
+{
     public ApiClient Create();
 }

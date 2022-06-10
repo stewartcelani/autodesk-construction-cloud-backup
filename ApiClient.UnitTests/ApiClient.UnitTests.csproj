@@ -10,11 +10,11 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Bogus" Version="34.0.2" />
-        <PackageReference Include="FluentAssertions" Version="6.6.0" />
-        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.11.0" />
-        <PackageReference Include="NSubstitute" Version="4.3.0" />
-        <PackageReference Include="xunit" Version="2.4.1" />
+        <PackageReference Include="Bogus" Version="34.0.2"/>
+        <PackageReference Include="FluentAssertions" Version="6.6.0"/>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.11.0"/>
+        <PackageReference Include="NSubstitute" Version="4.3.0"/>
+        <PackageReference Include="xunit" Version="2.4.1"/>
         <PackageReference Include="xunit.runner.visualstudio" Version="2.4.3">
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
             <PrivateAssets>all</PrivateAssets>
@@ -26,9 +26,9 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\ApiClient\ApiClient.csproj" />
-      <ProjectReference Include="..\Library.SecretsManager\Library.SecretsManager.csproj" />
-      <ProjectReference Include="..\Library.Testing\Library.Testing.csproj" />
+        <ProjectReference Include="..\ApiClient\ApiClient.csproj"/>
+        <ProjectReference Include="..\Library.SecretsManager\Library.SecretsManager.csproj"/>
+        <ProjectReference Include="..\Library.Testing\Library.Testing.csproj"/>
     </ItemGroup>
 
     <ItemGroup>

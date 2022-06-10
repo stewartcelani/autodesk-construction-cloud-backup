@@ -6,4 +6,3 @@ public interface ILoggerConfiguration
     public bool LogToConsole { get; set; }
     public bool LogToFile { get; set; }
 }
-

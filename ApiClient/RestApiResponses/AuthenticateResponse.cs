@@ -7,9 +7,7 @@ namespace ACC.ApiClient.RestApiResponses;
  */
 public class AuthenticateResponse
 {
-    [JsonProperty("access_token")]
-    public string AccessToken { get; set; }
+    [JsonProperty("access_token")] public string AccessToken { get; set; }
 
-    [JsonProperty("expires_in")]
-    public int ExpiresIn { get; set; }
+    [JsonProperty("expires_in")] public int ExpiresIn { get; set; }
 }

@@ -14,7 +14,7 @@ public class Folder
 
     /*
      * These properties are mapped from Autodesk Api
-     */  
+     */
     public string Name { get; set; }
     public string Type { get; set; }
     public DateTime CreateTime { get; set; }
@@ -26,7 +26,9 @@ public class Folder
     public DateTime LastModifiedTimeRollup { get; set; }
     public string LastModifiedUserId { get; set; }
     public string LastModifiedUserName { get; set; }
+
     public int ObjectCount { get; set; }
+
     /*
      * Properties not directly from the Autodesk Api are below
      */
@@ -35,47 +37,45 @@ public class Folder
     public string ParentFolderId { get; set; }
     public Folder? ParentFolder { get; set; }
     public bool IsRootFolder => ParentFolderId.EndsWith("-g");
-    public List<Folder> Subfolders { get; set; } = new List<Folder>();
-    public List<File> Files { get; set; } = new List<File>();
+    public List<Folder> Subfolders { get; set; } = new();
+    public List<File> Files { get; set; } = new();
     public bool IsEmpty => Subfolders.Count + Files.Count == 0;
     public bool IsNotEmpty => IsEmpty == false;
     public DirectoryInfo? DirectoryInfo { get; set; }
     public bool Created => DirectoryInfo != null;
     public IEnumerable<Folder> SubfoldersRecursive => Subfolders.FlattenRecursive(x => x.Subfolders);
     public IEnumerable<File> FilesRecursive => Files.Concat(SubfoldersRecursive.SelectMany(x => x.Files));
+
     public async Task GetContents()
     {
         await _apiClient.GetFolderContents(this);
     }
+
     public async Task GetContentsRecursively()
     {
         await _apiClient.GetFolderContentsRecursively(this);
     }
+
     public string GetPath(string? rootFolderId = null, StringBuilder? sb = null, string delimiter = @"\")
     {
         var thisFolderPath = $"{delimiter}{Name}";
 
         if (sb is null)
-        {
             sb = new StringBuilder(thisFolderPath);
-        }
         else
-        {
             sb.Insert(0, thisFolderPath);
-        }
 
-        if (FolderId == rootFolderId || ParentFolder is null)
-        {
-            return sb.ToString();
-        }
+        if (FolderId == rootFolderId || ParentFolder is null) return sb.ToString();
 
         return ParentFolder.GetPath(rootFolderId, sb);
     }
+
     public async Task DownloadContents(string downloadPath, CancellationToken ct = default)
     {
         ApiClient.CreateDirectories(Subfolders, downloadPath);
         await _apiClient.DownloadFiles(Files, downloadPath, ct);
     }
+
     public async Task DownloadContentsRecursively(string downloadPath, CancellationToken ct = default)
     {
         ApiClient.CreateDirectories(SubfoldersRecursive, downloadPath);

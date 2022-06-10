@@ -7,36 +7,21 @@ namespace ACC.ApiClient.RestApiResponses;
  */
 public class ProjectsResponse
 {
-    [JsonProperty("links")]
-    public ProjectsResponseLinks Links { get; set; }
+    [JsonProperty("links")] public ProjectsResponseLinks Links { get; set; }
 
-    [JsonProperty("data")]
-    public List<ProjectResponseProject> Data { get; set; }
+    [JsonProperty("data")] public List<ProjectResponseProject> Data { get; set; }
 }
 
 public class ProjectsResponseLinks
 {
-    [JsonProperty("self")]
-    public ProjectsResponseLink Self { get; set; }
+    [JsonProperty("self")] public ProjectsResponseLink Self { get; set; }
 
-    [JsonProperty("first")]
-    public ProjectsResponseLink First { get; set; }
+    [JsonProperty("first")] public ProjectsResponseLink First { get; set; }
 
-    [JsonProperty("next")]
-    public ProjectsResponseLink Next { get; set; }
+    [JsonProperty("next")] public ProjectsResponseLink Next { get; set; }
 }
 
 public class ProjectsResponseLink
 {
-    [JsonProperty("href")]
-    public string Href { get; set; }
+    [JsonProperty("href")] public string Href { get; set; }
 }
- 
-
-
-
-
-
-
-
-

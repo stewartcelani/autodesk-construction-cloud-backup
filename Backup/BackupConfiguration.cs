@@ -10,6 +10,29 @@ public class BackupConfiguration
             .WithParsed(MapArgs);
     }
 
+    public string BackupDirectory { get; set; }
+    public string ClientId { get; private set; }
+    public string ClientSecret { get; private set; }
+    public string AccountId { get; private set; }
+    public string HubId { get; private set; }
+    public int MaxDegreeOfParallelism { get; private set; }
+    public int RetryAttempts { get; private set; }
+    public int InitialRetryInSeconds { get; private set; }
+    public bool DryRun { get; private set; }
+    public int BackupsToRotate { get; private set; }
+    public List<string> ProjectsToBackup { get; private set; } = new();
+    public List<string> ProjectsToExclude { get; private set; } = new();
+    public bool DebugLogging { get; private set; }
+    public bool TraceLogging { get; private set; }
+    public int SmtpPort { get; private set; } = 25;
+    public string? SmtpHost { get; private set; }
+    public string? SmtpFromAddress { get; private set; }
+    public string? SmtpFromName { get; private set; }
+    public string? SmtpToAddress { get; private set; }
+    public string? SmtpUsername { get; private set; }
+    public string? SmtpPassword { get; private set; }
+    public bool SmtpEnableSsl { get; private set; }
+
     private void MapArgs(CommandLineArgs commandLineArgs)
     {
         BackupDirectory = commandLineArgs.BackupDirectory.EndsWith(@"\")
@@ -39,27 +62,4 @@ public class BackupConfiguration
         SmtpPassword = commandLineArgs.SmtpPassword;
         SmtpEnableSsl = commandLineArgs.SmtpEnableSsl;
     }
-    
-    public string BackupDirectory { get; set; }
-    public string ClientId { get; private set; }
-    public string ClientSecret { get; private set; }
-    public string AccountId { get; private set; }
-    public string HubId { get; private set; }
-    public int MaxDegreeOfParallelism { get; private set; }
-    public int RetryAttempts { get; private set; }
-    public int InitialRetryInSeconds { get; private set; }
-    public bool DryRun { get; private set; }
-    public int BackupsToRotate { get; private set; }
-    public List<string> ProjectsToBackup { get; private set; } = new();
-    public List<string> ProjectsToExclude { get; private set; } = new();
-    public bool DebugLogging { get; private set; }
-    public bool TraceLogging { get; private set; }
-    public int SmtpPort { get; private set; } = 25;
-    public string? SmtpHost { get; private set; }
-    public string? SmtpFromAddress { get; private set; }
-    public string? SmtpFromName { get; private set; }
-    public string? SmtpToAddress { get; private set; }
-    public string? SmtpUsername { get; private set; }
-    public string? SmtpPassword { get; private set; }
-    public bool SmtpEnableSsl { get; private set; }
 }

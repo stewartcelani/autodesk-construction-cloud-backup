@@ -7,11 +7,11 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using ACC.ApiClient.Entities;
-using Xunit;
 using FluentAssertions;
 using Library.Logger;
-using File = ACC.ApiClient.Entities.File;
 using Library.Testing;
+using Xunit;
+using File = ACC.ApiClient.Entities.File;
 
 // ReSharper disable AsyncVoidLambda
 
@@ -56,7 +56,7 @@ public class ApiClientUnitTests
         const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
         const string clientSecret = "wE3GFhuIsGJEi3d4";
         const string accountId = "f33e018a-d1f5-4ef3-ae67-606de6aeed87";
-        ILogger logger = new NLogLogger(new NLogLoggerConfiguration()
+        ILogger logger = new NLogLogger(new NLogLoggerConfiguration
         {
             LogLevel = LogLevel.Fatal,
             LogToConsole = false
@@ -107,8 +107,8 @@ public class ApiClientUnitTests
         const string clientSecret = "wE3GFhuIsGJEi3d4";
         const string accountId = "f33e018a-d1f5-4ef3-ae67-606de6aeed87";
         const string forbiddenResponse =
-            $@"{{ ""developerMessage"":""The client_id specified does not have access to the api product"", ""moreInfo"": ""https://forge.autodesk.com/en/docs/oauth/v2/developers_guide/error_handling/"", ""errorCode"": ""AUTH-001""}}";
-        var messageHandlerMapping = new MockHttpMessageHandlerMapping()
+            @"{ ""developerMessage"":""The client_id specified does not have access to the api product"", ""moreInfo"": ""https://forge.autodesk.com/en/docs/oauth/v2/developers_guide/error_handling/"", ""errorCode"": ""AUTH-001""}";
+        var messageHandlerMapping = new MockHttpMessageHandlerMapping
         {
             RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
             Response = forbiddenResponse,
@@ -153,7 +153,8 @@ public class ApiClientUnitTests
             new()
             {
                 RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
-                Response = await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
+                Response =
+                    await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
                 StatusCode = HttpStatusCode.OK
             },
             new()
@@ -197,8 +198,8 @@ public class ApiClientUnitTests
         const string clientSecret = "InvalidClientSecret";
         const string accountId = "f33e018a-d1f5-4ef3-ae67-606de6aeed87";
         const string unauthorizedResponse =
-            $@"{{""developerMessage"":""The client_id (application key)/client_secret are not valid"",""errorCode"":""AUTH-003"",""more info"":""https://forge.autodesk.com/en/docs/oauth/v2/developers_guide/error_handling/""}}";
-        var messageHandlerMapping = new MockHttpMessageHandlerMapping()
+            @"{""developerMessage"":""The client_id (application key)/client_secret are not valid"",""errorCode"":""AUTH-003"",""more info"":""https://forge.autodesk.com/en/docs/oauth/v2/developers_guide/error_handling/""}";
+        var messageHandlerMapping = new MockHttpMessageHandlerMapping
         {
             RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
             Response = unauthorizedResponse,
@@ -238,7 +239,7 @@ public class ApiClientUnitTests
         const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
         const string clientSecret = "InvalidClientSecret";
         const string accountId = "f33e018a-d1f5-4ef3-ae67-606de6aeed87";
-        var messageHandlerMapping = new MockHttpMessageHandlerMapping()
+        var messageHandlerMapping = new MockHttpMessageHandlerMapping
         {
             RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
             Response = string.Empty,
@@ -431,9 +432,9 @@ public class ApiClientUnitTests
         const string projectId = "b.0577ff54-1967-4c9b-80d4-eb649bd0774d";
         const string parentFolderId = "urn:adsk.wipprod:fs.folder:co.DerBocbkXrcYsz43uJLTkW";
         const string folderId = "urn:adsk.wipprod:fs.folder:co.tW57hcgcQxXkBrMu38Az1Z";
-        string folderEndpoint =
+        var folderEndpoint =
             $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/{folderId}";
-        string folderContentsEndpoint =
+        var folderContentsEndpoint =
             $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/{folderId}/contents";
         var messageHandlerMappings = new List<MockHttpMessageHandlerMapping>
         {
@@ -506,7 +507,7 @@ public class ApiClientUnitTests
         const string projectId = "b.0577ff54-1967-4c9b-80d4-eb649bd0774d";
         const string parentFolderId = "urn:adsk.wipprod:fs.folder:co.DerBocbkXrcYsz43uJLTkW";
         const string folderId = "urn:adsk.wipprod:fs.folder:co.tW57hcgcQxXkBrMu38Az1Z";
-        string folderEndpoint =
+        var folderEndpoint =
             $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/{folderId}";
         var messageHandlerMappings = new List<MockHttpMessageHandlerMapping>
         {
@@ -560,7 +561,7 @@ public class ApiClientUnitTests
         const string accountId = "48a4d1eb-a370-42fe-89c9-4dd9e2ad9d41";
         const string projectId = "b.0577ff54-1967-4c9b-80d4-eb649bd0774d";
         const string folderId = "urn:adsk.wipprod:fs.folder:co.DerBocbkXrcYsz43uJLTkW";
-        string folderEndpoint =
+        var folderEndpoint =
             $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/{folderId}";
         var messageHandlerMappings = new List<MockHttpMessageHandlerMapping>
         {
@@ -605,7 +606,7 @@ public class ApiClientUnitTests
         messageHandler.NumberOfCalls.Should().Be(2);
     }
 
-    
+
     [Fact]
     public async Task GetFolderContents_WithPagination_Should_ReturnFolderContents()
     {
@@ -615,9 +616,9 @@ public class ApiClientUnitTests
         const string accountId = "48a4d1eb-a370-42fe-89c9-4dd9e2ad9d41";
         const string projectId = "b.0577ff54-1967-4c9b-80d4-eb649bd0774d";
         const string folderId = "urn:adsk.wipprod:fs.folder:co.tW57hcgcQxXkBrMu38Az1Z";
-        string folderEndpoint =
+        var folderEndpoint =
             $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/{folderId}";
-        string folderContentsEndpoint =
+        var folderContentsEndpoint =
             $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/{folderId}/contents";
         var messageHandlerMappings = new List<MockHttpMessageHandlerMapping>
         {
@@ -673,7 +674,7 @@ public class ApiClientUnitTests
         folder.Files.Count.Should().Be(2);
         messageHandler.NumberOfCalls.Should().Be(4);
     }
-    
+
 
     [Fact]
     public async Task GetFolderWithContents_Should_ReturnFolderWithContents()
@@ -817,7 +818,7 @@ public class ApiClientUnitTests
         folder.Subfolders.All(x => x.ProjectId == projectId).Should().BeTrue();
         messageHandler.NumberOfCalls.Should().Be(4);
     }
-    
+
     [Fact]
     public async Task GetProject_Should_ReturnProject()
     {
@@ -828,7 +829,7 @@ public class ApiClientUnitTests
         const string projectId = "b.62185181-412c-4c01-b45c-6fcd429e58b2";
         const string projectName = "Sample Project - Seaport Civic Center";
         const string rootFolderId = "urn:adsk.wipprod:fs.folder:co.z5ncFrXRQiytzcYZrCj9-w";
-        string projectEndpoint = $"https://developer.api.autodesk.com/project/v1/hubs/b.{accountId}/projects/{projectId}";
+        var projectEndpoint = $"https://developer.api.autodesk.com/project/v1/hubs/b.{accountId}/projects/{projectId}";
         var messageHandlerMappings = new List<MockHttpMessageHandlerMapping>
         {
             new()
@@ -871,7 +872,7 @@ public class ApiClientUnitTests
         project.RootFolder.Should().BeNull();
         messageHandler.NumberOfCalls.Should().Be(2);
     }
-    
+
     [Fact]
     public async Task GetProject_getRootFolderContents_true_Should_ReturnProjectWithRootFolder()
     {
@@ -933,7 +934,7 @@ public class ApiClientUnitTests
         project.RootFolder.Should().BeOfType<Folder>();
         messageHandler.NumberOfCalls.Should().Be(3);
     }
-    
+
     [Fact]
     public async Task Folder_RecursiveEnumerators_Should_EnumerateContentsAppropriately()
     {
@@ -943,7 +944,7 @@ public class ApiClientUnitTests
         const string accountId = "48a4d1eb-a370-42fe-89c9-4dd9e2ad9d41";
         const string projectId = "b.0577ff54-1967-4c9b-80d4-eb649bd0774d";
         const string folderId = "urn:adsk.wipprod:fs.folder:co.DerBocbkXrcYsz43uJLTkW";
-        string folderEndpoint =
+        var folderEndpoint =
             $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/{folderId}";
         var messageHandlerMappings = new List<MockHttpMessageHandlerMapping>
         {
@@ -984,9 +985,7 @@ public class ApiClientUnitTests
         rootFolder.Subfolders[0].Subfolders[0].Files.Add(FakeData.GetFakeFile());
         rootFolder.Subfolders[0].Subfolders[0].Subfolders.AddRange(FakeData.GetFakeFolders(8, sut));
         foreach (Folder subfolder in rootFolder.Subfolders[0].Subfolders[0].Subfolders)
-        {
             subfolder.Files.Add(FakeData.GetFakeFile());
-        }
 
         // Act
         int subfolderCount = rootFolder.SubfoldersRecursive.Count();
@@ -997,7 +996,7 @@ public class ApiClientUnitTests
         filesCount.Should().Be(11);
         messageHandler.NumberOfCalls.Should().Be(2);
     }
-    
+
     [Fact]
     public async Task GetFolderContentsRecursively_Should_RecursivelyReturnFolderContents()
     {
@@ -1033,28 +1032,36 @@ public class ApiClientUnitTests
             },
             new()
             {
-                RequestUri = new Uri($"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/urn:adsk.wipprod:fs.folder:co.-Cj9GOznROaMrLBtjvWzdg/contents"),
+                RequestUri =
+                    new Uri(
+                        $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/urn:adsk.wipprod:fs.folder:co.-Cj9GOznROaMrLBtjvWzdg/contents"),
                 Response = await new StreamReader(@"ExampleRestApiResponses\Recursion_GetFolderContents_3.json")
                     .ReadToEndAsync(),
                 StatusCode = HttpStatusCode.OK
             },
             new()
             {
-                RequestUri = new Uri($"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/urn:adsk.wipprod:fs.folder:co.qh2HWoteQ9iymYm7DjbYvg/contents"),
+                RequestUri =
+                    new Uri(
+                        $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/urn:adsk.wipprod:fs.folder:co.qh2HWoteQ9iymYm7DjbYvg/contents"),
                 Response = await new StreamReader(@"ExampleRestApiResponses\Recursion_GetFolderContents_4.json")
                     .ReadToEndAsync(),
                 StatusCode = HttpStatusCode.OK
             },
             new()
             {
-                RequestUri = new Uri($"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/urn:adsk.wipprod:fs.folder:co.zLe2AszxQjeGgdiSCf49Ug/contents"),
+                RequestUri =
+                    new Uri(
+                        $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/urn:adsk.wipprod:fs.folder:co.zLe2AszxQjeGgdiSCf49Ug/contents"),
                 Response = await new StreamReader(@"ExampleRestApiResponses\Recursion_GetFolderContents_5.json")
                     .ReadToEndAsync(),
                 StatusCode = HttpStatusCode.OK
             },
             new()
             {
-                RequestUri = new Uri($"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/urn:adsk.wipprod:fs.folder:co.R86FfZRmS5eB0_cn1TIRUg/contents"),
+                RequestUri =
+                    new Uri(
+                        $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/urn:adsk.wipprod:fs.folder:co.R86FfZRmS5eB0_cn1TIRUg/contents"),
                 Response = await new StreamReader(@"ExampleRestApiResponses\Recursion_GetFolderContents_6.json")
                     .ReadToEndAsync(),
                 StatusCode = HttpStatusCode.OK
@@ -1084,7 +1091,7 @@ public class ApiClientUnitTests
         folder.FilesRecursive.Count().Should().Be(12);
         messageHandler.NumberOfCalls.Should().Be(7);
     }
-    
+
     [Fact]
     public async Task GetFolder_GetContents_Should_MapFolderPropertiesAppropriately()
     {
@@ -1094,7 +1101,8 @@ public class ApiClientUnitTests
         const string accountId = "48a4d1eb-a370-42fe-89c9-4dd9e2ad9d41";
         const string projectId = "b.62185181-412c-4c01-b45c-6fcd429e58b2";
         const string folderId = "urn:adsk.wipprod:fs.folder:co.9x1ON-8QSve2cJA6lAiegQ";
-        const string folderEndpoint = $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/{folderId}";
+        const string folderEndpoint =
+            $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/{folderId}";
         var messageHandlerMappings = new List<MockHttpMessageHandlerMapping>
         {
             new()
@@ -1166,7 +1174,7 @@ public class ApiClientUnitTests
         folder.SubfoldersRecursive.Count().Should().Be(2);
         folder.Type.Should().Be("folders");
     }
-    
+
     [Fact]
     public async Task GetFolder_GetContents_Should_MapSubfolderPropertiesAppropriately()
     {
@@ -1176,7 +1184,8 @@ public class ApiClientUnitTests
         const string accountId = "48a4d1eb-a370-42fe-89c9-4dd9e2ad9d41";
         const string projectId = "b.62185181-412c-4c01-b45c-6fcd429e58b2";
         const string folderId = "urn:adsk.wipprod:fs.folder:co.9x1ON-8QSve2cJA6lAiegQ";
-        const string folderEndpoint = $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/{folderId}";
+        const string folderEndpoint =
+            $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/{folderId}";
         var messageHandlerMappings = new List<MockHttpMessageHandlerMapping>
         {
             new()
@@ -1249,7 +1258,7 @@ public class ApiClientUnitTests
         subfolder.SubfoldersRecursive.Count().Should().Be(0);
         subfolder.Type.Should().Be("folders");
     }
-    
+
     [Fact]
     public async Task GetFolder_GetContents_Should_MapFilePropertiesAppropriately()
     {
@@ -1259,7 +1268,8 @@ public class ApiClientUnitTests
         const string accountId = "48a4d1eb-a370-42fe-89c9-4dd9e2ad9d41";
         const string projectId = "b.62185181-412c-4c01-b45c-6fcd429e58b2";
         const string folderId = "urn:adsk.wipprod:fs.folder:co.9x1ON-8QSve2cJA6lAiegQ";
-        const string folderEndpoint = $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/{folderId}";
+        const string folderEndpoint =
+            $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/{folderId}";
         var messageHandlerMappings = new List<MockHttpMessageHandlerMapping>
         {
             new()
@@ -1335,7 +1345,7 @@ public class ApiClientUnitTests
         file.Type.Should().Be("versions");
         file.VersionNumber.Should().Be(1);
     }
-    
+
     [Fact]
     public async Task Folder_GetPath_Should_ReturnAppropriatePath()
     {
@@ -1345,7 +1355,8 @@ public class ApiClientUnitTests
         const string accountId = "48a4d1eb-a370-42fe-89c9-4dd9e2ad9d41";
         const string projectId = "b.62185181-412c-4c01-b45c-6fcd429e58b2";
         const string folderId = "urn:adsk.wipprod:fs.folder:co.9x1ON-8QSve2cJA6lAiegQ";
-        const string folderEndpoint = $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/{folderId}";
+        const string folderEndpoint =
+            $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/{folderId}";
         var messageHandlerMappings = new List<MockHttpMessageHandlerMapping>
         {
             new()
@@ -1391,13 +1402,13 @@ public class ApiClientUnitTests
         // Act
         string folderPath = folder.GetPath();
         string subfolderPath = subfolder.GetPath();
-        
+
         // Assert
         messageHandler.NumberOfCalls.Should().Be(3);
         folderPath.Should().Be(@"\Recursion");
         subfolderPath.Should().Be(@"\Recursion\1");
     }
-    
+
     [Fact]
     public async Task File_GetPath_Should_ReturnAppropriatePath()
     {
@@ -1407,7 +1418,8 @@ public class ApiClientUnitTests
         const string accountId = "48a4d1eb-a370-42fe-89c9-4dd9e2ad9d41";
         const string projectId = "b.62185181-412c-4c01-b45c-6fcd429e58b2";
         const string folderId = "urn:adsk.wipprod:fs.folder:co.9x1ON-8QSve2cJA6lAiegQ";
-        const string folderEndpoint = $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/{folderId}";
+        const string folderEndpoint =
+            $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/{folderId}";
         var messageHandlerMappings = new List<MockHttpMessageHandlerMapping>
         {
             new()
@@ -1433,11 +1445,13 @@ public class ApiClientUnitTests
             },
             new()
             {
-                RequestUri = new Uri($"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/urn:adsk.wipprod:fs.folder:co.-Cj9GOznROaMrLBtjvWzdg/contents"),
+                RequestUri =
+                    new Uri(
+                        $"https://developer.api.autodesk.com/data/v1/projects/{projectId}/folders/urn:adsk.wipprod:fs.folder:co.-Cj9GOznROaMrLBtjvWzdg/contents"),
                 Response = await new StreamReader(@"ExampleRestApiResponses\Recursion_GetFolderContents_3.json")
                     .ReadToEndAsync(),
                 StatusCode = HttpStatusCode.OK
-            },
+            }
         };
         var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
         var httpClient = new HttpClient(messageHandler);
@@ -1464,7 +1478,7 @@ public class ApiClientUnitTests
         // Act
         string folderFilePath = folderFile.GetPath();
         string subfolderFilePath = subfolderFile.GetPath();
-        
+
         // Assert
         messageHandler.NumberOfCalls.Should().Be(4);
         folderFilePath.Should().Be(@"\Recursion\A001 - ARCHITECTURAL - GRAPHIC SYMBOLS & ABBREVIATIONS.pdf");

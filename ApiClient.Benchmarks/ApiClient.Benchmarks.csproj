@@ -9,12 +9,12 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="BenchmarkDotNet" Version="0.13.1" />
+        <PackageReference Include="BenchmarkDotNet" Version="0.13.1"/>
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\ApiClient\ApiClient.csproj" />
-      <ProjectReference Include="..\Library.SecretsManager\Library.SecretsManager.csproj" />
+        <ProjectReference Include="..\ApiClient\ApiClient.csproj"/>
+        <ProjectReference Include="..\Library.SecretsManager\Library.SecretsManager.csproj"/>
     </ItemGroup>
 
 </Project>
