@@ -121,7 +121,7 @@ public class FolderContentsResponseIncludedAttributes
 
     [JsonProperty("versionNumber")] public int VersionNumber { get; set; }
 
-    [JsonProperty("storageSize")] public int StorageSize { get; set; }
+    [JsonProperty("storageSize")] public long StorageSize { get; set; }
 
     [JsonProperty("fileType")] public string FileType { get; set; }
 
