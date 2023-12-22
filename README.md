@@ -6,8 +6,8 @@ The only products on the market at the time were $6k AUD per year, took 15-20 ho
 
 By default, ACCBackup will backup all projects in your account.
 
-**Update 25/02/2023:**
-Since [initial release](https://github.com/stewartcelani/autodesk-construction-cloud-backup/releases) in May 2022 I've been using ACCBackup to run nightly backups of (now) 100~ projects @ 150 GB~ in 4 hours, 30 minutes without issues.
+**Update 23/12/2023:**
+Since [initial release](https://github.com/stewartcelani/autodesk-construction-cloud-backup/releases) in May 2022 I've been using ACCBackup to run nightly backups of (now) 150~ projects @ 200 GB~ in 6 hours without issues.
 
 ### Prerequities
 1. Create an app via https://forge.autodesk.com/. At the time of writing all the APIs the app we are creating will use are free.
