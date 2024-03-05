@@ -1,28 +1,35 @@
 # Autodesk Construction Cloud Backup
-ACCBackup is a C# console application built to backup all Autodesk Construction Cloud/BIM360 projects in your account via the [Autodesk Forge API](https://forge.autodesk.com/en/docs/).
+ACCBackup is a C# console application built to backup all Autodesk Construction Cloud/BIM360 projects in your account via [Autodesk Platform Services (formerly Autodesk Forge)](https://aps.autodesk.com/).
 
-It can be run as a one-off or scheduled via a script. It was designed to fufill a need that Veeam Backup didn't support. 
+It can be run as a one-off or scheduled via a script. It was designed to fulfill a need that Veeam Backup didn't support. 
 The only products on the market at the time were $6k AUD per year, took 15-20 hours to backup what ACCBackup does in 3 hours, and required each project to be manually configured as a separate task/job. 
 
 By default, ACCBackup will backup all projects in your account.
 
-**Update 23/12/2023:**
+**Update 06/03/2024:**
 Since [initial release](https://github.com/stewartcelani/autodesk-construction-cloud-backup/releases) in May 2022 I've been using ACCBackup to run nightly backups of (now) 150~ projects @ 200 GB~ in 6 hours without issues.
 
+
 ### Prerequities
-1. Create an app via https://forge.autodesk.com/. At the time of writing all the APIs the app we are creating will use are free.
-2. You will need the Client ID, Client Secret, App Name = "Backup", Descripton = "Backup", Callback URL: point to your business URL but it is not important (this is for 3 legged auth and we only use 2 legged), and "APIs this app will be able to access": Autodesk Construction Cloud API, BIM 360 API, Data Management API.
-3. Enable Custom Integrations on your Autodesk admin account (if you don't see the tab email autodesk support as [this article](https://knowledge.autodesk.com/support/bim-360/learn-explore/caas/CloudHelp/cloudhelp/ENU/BIM360D-Administration/files/About-Account-Admin/GUID-0C83B441-C611-4574-8DA0-45D5CFC235FA-html.html) describes -- just say you want to build a custom integration)
-4. From Accounts Admin -> Settings -> Custom Integrations
-5. Add Custom Integration -> provide Client ID and App Name.
-6. Once this is done you will have a forge app with clientid & clientsecret that will be approved for your accountid.
+1. Create an app via https://aps.autodesk.com/myapps/. At the time of writing all the APIs the app we are creating will use are free.
+![01.png](docs%2F01.png)
+![02.png](docs%2F02.png)
+![03.png](docs%2F03.png)
+2. Make sure to only select the following two APIs: `Autodesk Construction Cloud API`, `Data Management API`
+![04.png](docs%2F04.png)
+3. Save the `Client ID` and `Client Secret` as you will need them for the backup.
+4. Enable Custom Integrations on your Autodesk admin account (if you don't see the tab email autodesk support as [this article](https://knowledge.autodesk.com/support/bim-360/learn-explore/caas/CloudHelp/cloudhelp/ENU/BIM360D-Administration/files/About-Account-Admin/GUID-0C83B441-C611-4574-8DA0-45D5CFC235FA-html.html) describes -- just say you want to build a custom integration).
+5. From Accounts Admin -> Settings -> Custom Integrations -> Add Custom Integration -> provide Client ID and App Name. Save the `BIM 360 Account ID` as you will need that for the backup.
+![05.png](docs%2F05.png)
+6. Once this is done you will have a forge app with `Client ID` & `Client Secret` that will be approved for your `BIM 360 Account ID`.
+![06.png](docs%2F06.png)
 
-NOTE: The above steps (roughly) mapped onto pure Autodesk Construction Cloud (the new Autodesk model/signup process) projects and the backup still worked.
-
+   
 ### Install
 - Install latest [.NET Runtime 6.X.X](https://dotnet.microsoft.com/en-us/download/dotnet/6.0) -- only the console version is required ("The .NET Runtime contains just the components needed to run a console app. Typically, you'd also install either the ASP.NET Core Runtime or .NET Desktop Runtime.")
 - Download the .zip via [the releases tab](https://github.com/stewartcelani/autodesk-construction-cloud-backup/releases)
 - Unzip and run (see examples below)
+
 
 ### Examples
 
@@ -116,6 +123,8 @@ Example backing all projects BUT two projects
 ```
 ACCBackup.exe --projectstoexclude "Test Project, 7468066c-53e6-4acf-8086-6b5fce0048d6" --backupdirectory "C:\ACCBackup" --clientid "DRO4zxzt71HCkL34cn2tAUSRS0OQGaRT" --clientsecret "tFRHKhuIrGQUi5d3" --accountid "9b3cc923-d920-4fee-ae91-5e9c8e4040rb"
 ```
+
+
 ### Debugging
 - Log files are located in ACCBackup.exe\Logs 
 - Try running with --hubid "YourAccoundIdHere" OR --hubid "b.YourAccountIdHere" (Autodesk is migrating from BIM360 to 'Autodesk Construction Cloud' but internally, at the moment, the API hubid needs b.AccountId (b. = BIM360).
@@ -123,6 +132,7 @@ ACCBackup.exe --projectstoexclude "Test Project, 7468066c-53e6-4acf-8086-6b5fce0
 - If the --debuglogging flag doesn't point you in the right direction the --tracelogging flag should be used. 
 - If all else fails log an issue via the repo with a link to your --tracelogginng log file and I will investigate.
 - Or/and email bold.oil7762@fastmail.com with your log file attached.
+
 
 ### ApiClient
 ACCBackup is designed around an ApiClient class library I wrote that does all the heavy lifting.
