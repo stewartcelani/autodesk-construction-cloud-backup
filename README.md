@@ -26,7 +26,7 @@ Since [initial release](https://github.com/stewartcelani/autodesk-construction-c
 
    
 ### Install
-- Install latest [.NET Runtime 6.X.X](https://dotnet.microsoft.com/en-us/download/dotnet/6.0) -- only the console version is required ("The .NET Runtime contains just the components needed to run a console app. Typically, you'd also install either the ASP.NET Core Runtime or .NET Desktop Runtime.")
+- Install latest [.NET Runtime 8.X.X](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) -- only the console version is required ("The .NET Runtime contains just the components needed to run a console app. Typically, you'd also install either the ASP.NET Core Runtime or .NET Desktop Runtime.")
 - Download the .zip via [the releases tab](https://github.com/stewartcelani/autodesk-construction-cloud-backup/releases)
 - Unzip and run (see examples below)
 

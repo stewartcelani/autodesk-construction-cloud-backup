@@ -3,7 +3,7 @@
 namespace ACC.ApiClient.RestApiResponses;
 
 /*
- * https://forge.autodesk.com/en/docs/oauth/v1/reference/http/authenticate-POST/
+ * https://aps.autodesk.com/en/docs/oauth/v2/reference/http/gettoken-POST/
  */
 public class AuthenticateResponse
 {

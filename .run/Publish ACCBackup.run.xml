@@ -1,6 +1,6 @@
 ﻿<component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Publish ACCBackup" type="DotNetFolderPublish" factoryName="Publish to folder">
-    <riderPublish configuration="Release" delete_existing_files="true" platform="Any CPU" runtime="Portable" target_folder="$PROJECT_DIR$/Backup/bin/Release/net6.0/publish" target_framework="net6.0" uuid_high="3421361113221975864" uuid_low="-7358615929942930098" />
+    <riderPublish configuration="Release" delete_existing_files="true" platform="Any CPU" runtime="Portable" target_folder="$PROJECT_DIR$/Backup/bin/Release/net8.0/publish" target_framework="net8.0" uuid_high="3421361113221975864" uuid_low="-7358615929942930098" />
     <method v="2" />
   </configuration>
 </component>

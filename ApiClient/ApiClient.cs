@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Net.Http.Headers;
+using System.Text;
 using ACC.ApiClient.Entities;
 using ACC.ApiClient.RestApiResponses;
 using Newtonsoft.Json;
@@ -352,21 +353,24 @@ public class ApiClient : IApiClient
     {
         Config.Logger?.Trace("Top");
         const string moreDetailsUrl =
-            "https://forge.autodesk.com/en/docs/oauth/v1/reference/http/authenticate-POST/";
-        const string authenticateEndpoint = "https://developer.api.autodesk.com/authentication/v1/authenticate";
+            "https://aps.autodesk.com/en/docs/oauth/v2/reference/http/gettoken-POST";
+        const string authenticateEndpoint = "https://developer.api.autodesk.com/authentication/v2/token";
+        var clientIdAndSecret = $"{Config.ClientId}:{Config.ClientSecret}";
+        var base64ClientIdAndSecretBytes = Convert.ToBase64String(Encoding.UTF8.GetBytes(clientIdAndSecret));
         var values = new Dictionary<string, string>
         {
-            { "client_id", Config.ClientId },
-            { "client_secret", Config.ClientSecret },
             { "grant_type", "client_credentials" },
-            { "scope", "account:read account:write data:read" }
+            { "scope", "data:read" }
         };
         var body = new FormUrlEncodedContent(values);
         var responseString = string.Empty;
         await Config.RetryPolicy.ExecuteAsync(async () =>
         {
             Config.Logger?.Trace($"Top RetryPolicy, about to call authenticate endpoint: {authenticateEndpoint}");
-            HttpResponseMessage response = await Config.HttpClient.PostAsync(authenticateEndpoint, body);
+            using var requestMessage = new HttpRequestMessage(HttpMethod.Post, authenticateEndpoint);
+            requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Basic", base64ClientIdAndSecretBytes);
+            requestMessage.Content = body;
+            HttpResponseMessage response = await Config.HttpClient.SendAsync(requestMessage);
             responseString = await response.Content.ReadAsStringAsync();
             HandleUnsuccessfulStatusCode(
                 responseString,
