@@ -1,5 +1,6 @@
 ﻿using Polly;
 using Polly.Retry;
+using System.Net.Http;
 
 namespace ACC.ApiClient;
 
@@ -21,7 +22,7 @@ public class ApiClientConfiguration : ApiClientOptions
     public AsyncRetryPolicy GetRetryPolicy(int maxRetryAttempts, int initialRetryDelayInSeconds)
     {
         return Policy
-            .Handle<Exception>()
+            .Handle<Exception>(ex => ex is not HttpRequestException httpEx || httpEx.StatusCode != System.Net.HttpStatusCode.Forbidden)
             .WaitAndRetryAsync(
                 maxRetryAttempts,
                 retryAttempt => TimeSpan.FromSeconds(retryAttempt * initialRetryDelayInSeconds),
