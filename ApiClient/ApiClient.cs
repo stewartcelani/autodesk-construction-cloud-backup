@@ -207,42 +207,45 @@ public class ApiClient : IApiClient
     private async Task<string> GetSignedS3DownloadUrl(string bucketKey, string objectKey, CancellationToken ct)
     {
         // Build the endpoint URL
-        string signedUrlEndpoint = $"https://developer.api.autodesk.com/oss/v2/buckets/{bucketKey}/objects/{objectKey}/signeds3download?minutesExpiration=30";
-        
+        string signedUrlEndpoint =
+            $"https://developer.api.autodesk.com/oss/v2/buckets/{bucketKey}/objects/{objectKey}/signeds3download?minutesExpiration=30";
+
         Config.Logger?.Debug($"Requesting signed S3 URL from endpoint: {signedUrlEndpoint}");
-        
+
         // Ensure we have a valid access token (this method should already exist in your code)
         await EnsureAccessToken();
-        Config.Logger?.Debug($"Using access token with first 5 chars: {(_accessToken?.Length > 5 ? _accessToken.Substring(0, 5) : "null")}...");
+        Config.Logger?.Debug(
+            $"Using access token with first 5 chars: {(_accessToken?.Length > 5 ? _accessToken.Substring(0, 5) : "null")}...");
 
         try
         {
             // Make the API call
             var request = new HttpRequestMessage(HttpMethod.Get, signedUrlEndpoint);
             request.Headers.Add("Authorization", $"Bearer {_accessToken}");
-            
+
             // Log all request headers for debugging
             foreach (var header in request.Headers)
             {
                 Config.Logger?.Debug($"Request header: {header.Key}: {string.Join(", ", header.Value)}");
             }
-            
+
             Config.Logger?.Debug($"Sending request to {signedUrlEndpoint} with method {request.Method}");
             DateTime startTime = DateTime.Now;
             HttpResponseMessage response = await Config.HttpClient.SendAsync(request, ct);
             TimeSpan duration = DateTime.Now - startTime;
-            
-            Config.Logger?.Debug($"Received response in {duration.TotalMilliseconds}ms with status code: {(int)response.StatusCode} {response.StatusCode}");
-            
+
+            Config.Logger?.Debug(
+                $"Received response in {duration.TotalMilliseconds}ms with status code: {(int)response.StatusCode} {response.StatusCode}");
+
             // Log response headers
             foreach (var header in response.Headers)
             {
                 Config.Logger?.Debug($"Response header: {header.Key}: {string.Join(", ", header.Value)}");
             }
-            
+
             string responseString = await response.Content.ReadAsStringAsync(ct);
             Config.Logger?.Debug($"Response content length: {responseString.Length} characters");
-            
+
             // For debugging, log a small sample of the response if it's very long
             if (responseString.Length > 100)
             {
@@ -252,16 +255,16 @@ public class ApiClient : IApiClient
             {
                 Config.Logger?.Debug($"Response content: {responseString}");
             }
-            
+
             // Check if the response is valid JSON
             bool isValidJson = false;
-            try 
+            try
             {
                 var obj = Newtonsoft.Json.JsonConvert.DeserializeObject(responseString);
                 isValidJson = obj != null;
                 Config.Logger?.Debug($"Response is valid JSON: {isValidJson}");
             }
-            catch 
+            catch
             {
                 Config.Logger?.Debug("Response is not valid JSON");
             }
@@ -270,38 +273,45 @@ public class ApiClient : IApiClient
             if (!response.IsSuccessStatusCode)
             {
                 // Log other errors and stop
-                Config.Logger?.Error($"Failed to generate signed S3 URL for {bucketKey}/{objectKey}. Status: {response.StatusCode}. Response: {responseString}");
-                throw new HttpRequestException($"Failed to generate signed S3 URL: {responseString}", null, response.StatusCode);
+                Config.Logger?.Error(
+                    $"Failed to generate signed S3 URL for {bucketKey}/{objectKey}. Status: {response.StatusCode}. Response: {responseString}");
+                throw new HttpRequestException($"Failed to generate signed S3 URL: {responseString}", null,
+                    response.StatusCode);
             }
 
             // Parse the response to get the signed URL
             Config.Logger?.Debug($"Parsing response JSON to extract signed URL");
             var signedUrlResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<SignedUrlResponse>(responseString);
-            
+
             if (signedUrlResponse == null || string.IsNullOrEmpty(signedUrlResponse.Url))
             {
-                Config.Logger?.Error($"Received empty or invalid signed URL response for {bucketKey}/{objectKey}: {responseString}");
+                Config.Logger?.Error(
+                    $"Received empty or invalid signed URL response for {bucketKey}/{objectKey}: {responseString}");
                 throw new InvalidOperationException($"Received empty or invalid signed URL response: {responseString}");
             }
-            
-            Config.Logger?.Debug($"Successfully obtained signed S3 URL for {bucketKey}/{objectKey} with length: {signedUrlResponse.Url.Length}");
-            
+
+            Config.Logger?.Debug(
+                $"Successfully obtained signed S3 URL for {bucketKey}/{objectKey} with length: {signedUrlResponse.Url.Length}");
+
             // Return the URL exactly as received without any modifications
             return signedUrlResponse.Url;
         }
         catch (TaskCanceledException ex)
         {
-            Config.Logger?.Error($"Network timeout or cancellation when requesting signed URL for {bucketKey}/{objectKey}: {ex.Message}");
+            Config.Logger?.Error(
+                $"Network timeout or cancellation when requesting signed URL for {bucketKey}/{objectKey}: {ex.Message}");
             throw;
         }
         catch (HttpRequestException ex)
         {
-            Config.Logger?.Error($"HTTP error when requesting signed URL for {bucketKey}/{objectKey}: {ex.Message}, Status: {ex.StatusCode}");
+            Config.Logger?.Error(
+                $"HTTP error when requesting signed URL for {bucketKey}/{objectKey}: {ex.Message}, Status: {ex.StatusCode}");
             throw;
         }
         catch (Exception ex)
         {
-            Config.Logger?.Error($"Unexpected error when requesting signed URL for {bucketKey}/{objectKey}: {ex.GetType().Name}: {ex.Message}");
+            Config.Logger?.Error(
+                $"Unexpected error when requesting signed URL for {bucketKey}/{objectKey}: {ex.GetType().Name}: {ex.Message}");
             throw;
         }
     }
@@ -309,8 +319,7 @@ public class ApiClient : IApiClient
     // Helper class to deserialize the API response
     private class SignedUrlResponse
     {
-        [Newtonsoft.Json.JsonProperty("url")]
-        public string Url { get; set; }
+        [Newtonsoft.Json.JsonProperty("url")] public string Url { get; set; }
     }
 
     public async Task<FileInfo> DownloadFile(
@@ -334,67 +343,78 @@ public class ApiClient : IApiClient
             {
                 // Log the original download URL for debugging
                 Config.Logger?.Debug($"Original download URL: {file.DownloadUrl}");
-                
+
                 // Extract bucketKey and objectKey from the file.DownloadUrl
                 var uri = new Uri(file.DownloadUrl);
                 Config.Logger?.Debug($"URL Path: {uri.AbsolutePath}");
-                
+
                 var pathSegments = uri.AbsolutePath.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
-                
+
                 // Log all path segments for debugging
                 for (int i = 0; i < pathSegments.Length; i++)
                 {
                     Config.Logger?.Debug($"Path segment [{i}]: {pathSegments[i]}");
                 }
-                
+
                 // Update indices to correctly extract bucket and object keys
                 // The URL format is typically: https://developer.api.autodesk.com/oss/v2/buckets/wip.dm.prod/objects/object-id.rvt
                 // When split, the segments are: ["oss", "v2", "buckets", "wip.dm.prod", "objects", "object-id.rvt"]
                 string bucketKey = pathSegments[3]; // Corrected from [2] to [3] to get actual bucket name
                 string objectKey = pathSegments[5]; // Corrected from [4] to [5] to get actual object ID
-                
-                Config.Logger?.Debug($"Extracted bucket key: {bucketKey}, object key: {objectKey} from URL: {file.DownloadUrl}");
+
+                Config.Logger?.Debug(
+                    $"Extracted bucket key: {bucketKey}, object key: {objectKey} from URL: {file.DownloadUrl}");
 
                 // Get signed S3 URL for download
                 string signedUrl = await GetSignedS3DownloadUrl(bucketKey, objectKey, ct);
-                
+
                 // Log the signed URL (partial for security) for debugging
                 if (!string.IsNullOrEmpty(signedUrl))
                 {
                     string redactedUrl = signedUrl;
                     int queryIndex = signedUrl.IndexOf('?');
-                    
+
                     if (queryIndex > 0)
                     {
                         // Only log the base URL and not the query parameters that contain credentials
                         redactedUrl = signedUrl.Substring(0, queryIndex) + "?[QUERY_PARAMETERS_REDACTED]";
                     }
-                    
+
                     Config.Logger?.Debug($"Generated signed S3 URL: {redactedUrl}");
                 }
                 else
                 {
                     Config.Logger?.Warn("Generated signed S3 URL is null or empty");
                 }
-                
+
                 Config.Logger?.Info($"Downloading file from signed URL for {bucketKey}/{objectKey}");
                 file.DownloadAttempts++;
-                
+
                 // Create a separate HttpClient instance for the download to avoid any default headers
                 // that might interfere with the signed URL request
                 using (var downloadClient = new HttpClient())
                 {
+                    // Set no timeout or a very long timeout for large files
+                    downloadClient.Timeout = Timeout.InfiniteTimeSpan;
+
                     // Log the request details before sending
                     Config.Logger?.Debug($"Sending download request to S3 with method: GET");
-                    
+
                     try
                     {
-                        // Use HttpClient without any additional headers for signed URL
-                        HttpResponseMessage response = await downloadClient.GetAsync(signedUrl, ct);
-                        
+                        // Create a request message rather than using GetAsync to have more control
+                        var request = new HttpRequestMessage(HttpMethod.Get, signedUrl);
+
+                        // Use HttpCompletionOption.ResponseHeadersRead to prevent buffering the entire response
+                        using var response = await downloadClient.SendAsync(
+                            request,
+                            HttpCompletionOption.ResponseHeadersRead,
+                            ct);
+
                         // Log response status code
-                        Config.Logger?.Debug($"Download response status code: {(int)response.StatusCode} {response.StatusCode}");
-                        
+                        Config.Logger?.Debug(
+                            $"Download response status code: {(int)response.StatusCode} {response.StatusCode}");
+
                         // If the request failed, get detailed error information
                         if (!response.IsSuccessStatusCode)
                         {
@@ -402,15 +422,44 @@ public class ApiClient : IApiClient
                             Config.Logger?.Error($"S3 download error response: {errorContent}");
                             response.EnsureSuccessStatusCode(); // This will throw with the status code
                         }
-                        
-                        await using Stream stream = await response.Content.ReadAsStreamAsync(ct);
-                        await using FileStream fileStream = new(downloadPath, FileMode.Create);
-                        await stream.CopyToAsync(fileStream, ct);
-                        file.FileSizeOnDisk = fileStream.Length;
+
+                        // Get the content stream asynchronously
+                        using var contentStream = await response.Content.ReadAsStreamAsync(ct);
+
+                        // Create file stream
+                        using var fileStream = new FileStream(
+                            downloadPath,
+                            FileMode.Create,
+                            FileAccess.Write,
+                            FileShare.None,
+                            bufferSize: 8192, // Small buffer size to control memory usage
+                            useAsync: true); // Use async IO
+
+                        // Stream the content to disk in small chunks
+                        byte[] buffer = new byte[8192]; // 8KB buffer
+                        int bytesRead;
+                        long totalBytesRead = 0;
+
+                        // Read and write in chunks
+                        Config.Logger?.Debug($"Starting to stream file to disk in 8KB chunks");
+                        while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, ct)) > 0)
+                        {
+                            await fileStream.WriteAsync(buffer, 0, bytesRead, ct);
+                            totalBytesRead += bytesRead;
+
+                            // Log progress for very large files (e.g., every 100MB)
+                            if (totalBytesRead % (100 * 1024 * 1024) < 8192)
+                            {
+                                Config.Logger?.Debug($"Downloaded {totalBytesRead / (1024 * 1024)} MB so far");
+                            }
+                        }
+
+                        file.FileSizeOnDisk = totalBytesRead;
                         file.FileInfo = new FileInfo(downloadPath);
-                        
-                        Config.Logger?.Info($"Successfully downloaded file {bucketKey}/{objectKey}, size: {file.FileSizeOnDisk} bytes");
-                        
+
+                        Config.Logger?.Info(
+                            $"Successfully downloaded file {bucketKey}/{objectKey}, size: {file.FileSizeOnDisk} bytes");
+
                         if (file.FileSizeOnDisk == file.StorageSize)
                             Config.Logger?.Debug($"{file.FileInfo.FullName} ({file.FileSizeOnDiskInMb} MB)");
                         else
@@ -421,8 +470,9 @@ public class ApiClient : IApiClient
                     catch (HttpRequestException ex)
                     {
                         // Log detailed information about the HTTP exception
-                        Config.Logger?.Error($"HTTP error during download: {ex.GetType().Name}: {ex.Message}, Status: {ex.StatusCode}");
-                        
+                        Config.Logger?.Error(
+                            $"HTTP error during download: {ex.GetType().Name}: {ex.Message}, Status: {ex.StatusCode}");
+
                         // Rethrow to be handled by the retry policy
                         throw;
                     }
