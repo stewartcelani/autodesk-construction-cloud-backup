@@ -1,4 +1,9 @@
 # Autodesk Construction Cloud Backup
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/stewartcelani/autodesk-construction-cloud-backup)
+![GitHub license](https://img.shields.io/github/license/stewartcelani/autodesk-construction-cloud-backup)
+![.NET](https://img.shields.io/badge/.NET-8.0-blueviolet)
+![GitHub last commit](https://img.shields.io/github/last-commit/stewartcelani/autodesk-construction-cloud-backup)
+
 ACCBackup is a C# console application built to backup all Autodesk Construction Cloud/BIM360 projects in your account via [Autodesk Platform Services (formerly Autodesk Forge)](https://aps.autodesk.com/).
 
 It can be run as a one-off or scheduled via a script. It was designed to fulfill a need that Veeam Backup didn't support. 
@@ -6,8 +11,8 @@ The only products on the market at the time were $6k AUD per year, took 15-20 ho
 
 By default, ACCBackup will backup all projects in your account.
 
-**Update 06/03/2024:**
-Since [initial release](https://github.com/stewartcelani/autodesk-construction-cloud-backup/releases) in May 2022 I've been using ACCBackup to run nightly backups of (now) 150~ projects @ 200 GB~ in 6 hours without issues.
+**Update 27/07/2025:**
+Since [initial release](https://github.com/stewartcelani/autodesk-construction-cloud-backup/releases) in May 2022 I've been using ACCBackup to run nightly backups of (now) 170~ projects @ 225 GB~ in 8 hours without issues.
 
 
 ### Prerequities
