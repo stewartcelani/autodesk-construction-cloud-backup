@@ -81,4 +81,8 @@ public class CommandLineArgs
 
     [Option(Required = false, Default = false, HelpText = "Backup summary notification email: SMTP over SSL.")]
     public bool SmtpEnableSsl { get; set; } = false;
+
+    [Option(Required = false, Default = false, 
+        HelpText = "Force full download of all files, bypassing incremental backup optimization.")]
+    public bool ForceFullDownload { get; set; } = false;
 }

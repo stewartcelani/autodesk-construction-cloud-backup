@@ -19,6 +19,28 @@ public class ApiClient : IApiClient
     }
 
     public ApiClientConfiguration Config { get; }
+    
+    // Incremental backup support
+    private BackupManifest? _previousBackupManifest;
+    private string _previousBackupDirectory = string.Empty;
+    private int _filesDownloaded = 0;
+    private int _filesCopied = 0;
+    private long _bytesDownloaded = 0;
+    private long _bytesCopied = 0;
+    
+    public void SetPreviousBackupManifest(BackupManifest manifest)
+    {
+        _previousBackupManifest = manifest;
+        if (manifest != null)
+        {
+            _previousBackupDirectory = manifest.BackupDirectory;
+        }
+    }
+    
+    public (int downloaded, int copied, long bytesDownloaded, long bytesCopied) GetIncrementalStats()
+    {
+        return (_filesDownloaded, _filesCopied, _bytesDownloaded, _bytesCopied);
+    }
 
     public async Task<Project> GetProject(string projectId, bool getRootFolderContents = false)
     {
@@ -327,6 +349,65 @@ public class ApiClient : IApiClient
     {
         CreateDirectory(file.ParentFolder, rootDirectory);
         string downloadPath = Path.Combine(rootDirectory, file.GetPath()[1..]);
+        
+        // Check if file exists in previous backup and can be copied instead of downloaded
+        if (_previousBackupManifest != null && !Config.DryRun)
+        {
+            // The manifest key should match how it was created in GenerateBackupManifest
+            // The rootDirectory includes the project name already (sanitized)
+            var rootDirInfo = new DirectoryInfo(rootDirectory);
+            var projectName = rootDirInfo.Name; // This is already sanitized from Backup.cs
+            var fileRelativePath = file.GetPath()[1..];
+            // Normalize path separators to forward slashes to match manifest keys
+            var manifestKey = Path.Combine(projectName, fileRelativePath)
+                .Replace('\\', '/');
+            
+            if (_previousBackupManifest.TryGetFile(manifestKey, out var previousEntry))
+            {
+                // Check if file is unchanged
+                if (previousEntry != null && 
+                    previousEntry.FileId == file.FileId &&
+                    previousEntry.VersionNumber == file.VersionNumber &&
+                    previousEntry.LastModifiedTime == file.LastModifiedTime &&
+                    previousEntry.StorageSize == file.StorageSize)
+                {
+                    // File is unchanged, try to copy from previous backup
+                    var sourcePath = Path.Combine(_previousBackupDirectory, manifestKey);
+                    if (System.IO.File.Exists(sourcePath))
+                    {
+                        var sourceInfo = new FileInfo(sourcePath);
+                        if (sourceInfo.Length == file.StorageSize)
+                        {
+                            try
+                            {
+                                // Copy file from previous backup
+                                System.IO.File.Copy(sourcePath, downloadPath, true);
+                                file.FileInfo = new FileInfo(downloadPath);
+                                file.FileSizeOnDisk = file.FileInfo.Length;
+                                
+                                // Verify the copy
+                                if (file.FileInfo.Length == file.StorageSize)
+                                {
+                                    _filesCopied++;
+                                    _bytesCopied += file.StorageSize;
+                                    Config.Logger?.Info($"[COPIED] {file.FileInfo.FullName} ({file.FileSizeOnDiskInMb} MB)");
+                                    return file.FileInfo;
+                                }
+                                else
+                                {
+                                    Config.Logger?.Warn($"File size mismatch after copy for {file.Name}, downloading instead");
+                                    System.IO.File.Delete(downloadPath);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Config.Logger?.Debug($"Failed to copy file from previous backup: {ex.Message}, downloading instead");
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         if (Config.DryRun)
         {
@@ -456,15 +537,19 @@ public class ApiClient : IApiClient
 
                         file.FileSizeOnDisk = totalBytesRead;
                         file.FileInfo = new FileInfo(downloadPath);
+                        
+                        // Track download statistics
+                        _filesDownloaded++;
+                        _bytesDownloaded += file.StorageSize;
 
                         Config.Logger?.Info(
                             $"Successfully downloaded file {bucketKey}/{objectKey}, size: {file.FileSizeOnDisk} bytes");
 
                         if (file.FileSizeOnDisk == file.StorageSize)
-                            Config.Logger?.Debug($"{file.FileInfo.FullName} ({file.FileSizeOnDiskInMb} MB)");
+                            Config.Logger?.Info($"[DOWNLOADED] {file.FileInfo.FullName} ({file.FileSizeOnDiskInMb} MB)");
                         else
                             Config.Logger?.Warn(
-                                @$"{file.FileInfo.FullName} ({file.FileSizeOnDiskInMb}/{file.ApiReportedStorageSizeInMb} bytes) (Mismatch between size reported by API and size downloaded to disk)");
+                                @$"[DOWNLOADED] {file.FileInfo.FullName} ({file.FileSizeOnDiskInMb}/{file.ApiReportedStorageSizeInMb} MB) (Mismatch between size reported by API and size downloaded to disk)");
                         return file.FileInfo;
                     }
                     catch (HttpRequestException ex)

@@ -2,10 +2,12 @@
 using System.Net.Mail;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using ACC.ApiClient;
 using ACC.ApiClient.Entities;
 using ACC.Backup.Entities;
 using Library.Logger;
+using Newtonsoft.Json;
 
 namespace ACC.Backup;
 
@@ -58,7 +60,16 @@ public class Backup : IBackup
             return;
         }
 
-        RotateBackupDirectories();
+        // Create the timestamped backup directory first
+        Config.BackupDirectory = Path.Combine(Config.BackupDirectory, DateTime.Now.ToString("yyyy-MM-dd_HH-mm"));
+        
+        // Load previous backup manifest for incremental backup (before any rotation)
+        var previousManifest = LoadPreviousBackupManifest();
+        if (previousManifest != null)
+        {
+            ApiClient.SetPreviousBackupManifest(previousManifest);
+        }
+        
         LogProjectsSelectedForBackup(_projects);
         foreach (ProjectBackup project in _projects)
         {
@@ -67,13 +78,25 @@ public class Backup : IBackup
             Logger.Info("Querying for list of folders and files, this may take a while depending on project size.");
             await project.GetContentsRecursively();
             Logger.Info("Backup beginning.");
-            await project.DownloadContentsRecursively(Path.Combine(Config.BackupDirectory, project.Name));
+            // Use sanitized project name for directory creation
+            var sanitizedProjectName = SanitizeProjectName(project.Name);
+            await project.DownloadContentsRecursively(Path.Combine(Config.BackupDirectory, sanitizedProjectName));
             project.BackupFinishedAt = DateTime.Now;
             Logger.Info($"=> Finished processing project {project.Name} ({project.ProjectId})");
             LogBackupSummaryLine(project);
         }
 
         LogBackupSummary(_projects);
+        
+        // Log incremental backup statistics
+        LogIncrementalBackupStats();
+        
+        // Generate and save backup manifest for incremental backups
+        GenerateBackupManifest(_projects);
+        
+        // Rotate old backups AFTER successful backup completion
+        RotateBackupDirectories();
+        
         if (Config.SmtpHost is not null && Config.SmtpFromAddress is not null && Config.SmtpToAddress is not null)
             EmailBackupSummary(_projects);
 
@@ -247,28 +270,64 @@ public class Backup : IBackup
     private void RotateBackupDirectories()
     {
         Logger.Debug("Rotating backup directories.");
+        
+        // Get the executable's directory to ensure we never try to delete it
+        string executablePath = Assembly.GetExecutingAssembly().Location;
+        string executableDirectory = Path.GetDirectoryName(executablePath) ?? "";
+        
+        // Get the parent directory and current backup directory
+        string currentBackupDir = Config.BackupDirectory.TrimEnd('\\');
+        string parentDir = Directory.GetParent(currentBackupDir)?.FullName;
+        
+        if (string.IsNullOrEmpty(parentDir))
+        {
+            Logger.Debug("No parent directory found, skipping rotation");
+            return;
+        }
+        
         do
         {
-            List<DirectoryInfo> backupDirectories = GetDirectories(Config.BackupDirectory);
+            // Get all backup directories except the current one
+            List<DirectoryInfo> backupDirectories = GetDirectories(parentDir)
+                .Where(d => !d.FullName.Equals(currentBackupDir, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+                
             Logger.Trace(
-                $"Root backup directory ({Config.BackupDirectory}) contains {backupDirectories.Count}/{Config.BackupsToRotate} directories");
-            if (backupDirectories.Count < Config.BackupsToRotate) break;
+                $"Root backup directory ({parentDir}) contains {backupDirectories.Count + 1}/{Config.BackupsToRotate} backup directories (including current)");
+            
+            // We add 1 to count because we exclude the current backup from the list
+            if (backupDirectories.Count + 1 <= Config.BackupsToRotate) break;
 
             DirectoryInfo oldestDirectory = backupDirectories.MinBy(x => x.CreationTime)!;
-            Logger.Trace($"Deleting oldest backup directory {oldestDirectory.FullName}");
+            
+            // Additional safety check: never delete the directory containing the executable
+            if (oldestDirectory.FullName.Equals(executableDirectory, StringComparison.OrdinalIgnoreCase) ||
+                executableDirectory.StartsWith(oldestDirectory.FullName, StringComparison.OrdinalIgnoreCase))
+            {
+                Logger.Warn($"Skipping deletion of {oldestDirectory.FullName} as it contains the running executable");
+                break;
+            }
+            
+            Logger.Info($"=> Deleting old backup directory {oldestDirectory.Name} to maintain rotation limit");
             oldestDirectory.Delete(true);
         } while (true);
-
-        Config.BackupDirectory = Path.Combine(Config.BackupDirectory, DateTime.Now.ToString("yyyy-MM-dd_HH-mm"));
-        Logger.Trace($"Exited backup rotation while loop with Config.BackupDirectory: {Config.BackupDirectory}.");
+        
+        Logger.Trace($"Backup rotation complete.");
     }
 
     private static List<DirectoryInfo> GetDirectories(string path)
     {
         if (!Directory.Exists(path)) Directory.CreateDirectory(path);
 
-        string[] backupDirectoriesArr = Directory.GetDirectories(path);
-        return backupDirectoriesArr.Select(p => new DirectoryInfo(p)).ToList();
+        // Only return directories that match the backup timestamp pattern (yyyy-MM-dd_HH-mm)
+        // This prevents attempting to delete non-backup directories like the executable's folder
+        Regex backupDirPattern = new Regex(@"^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}$");
+        
+        string[] allDirectories = Directory.GetDirectories(path);
+        return allDirectories
+            .Select(p => new DirectoryInfo(p))
+            .Where(dir => backupDirPattern.IsMatch(dir.Name))
+            .ToList();
     }
 
 
@@ -317,5 +376,203 @@ public class Backup : IBackup
         }
 
         return filteredProjects;
+    }
+    
+    private void LogIncrementalBackupStats()
+    {
+        var stats = ApiClient.GetIncrementalStats();
+        if (stats.copied > 0 || stats.downloaded > 0)
+        {
+            Logger.Info("=================================================================================");
+            Logger.Info("=> Incremental Backup Statistics:");
+            Logger.Info($"    Files copied from previous backup: {stats.copied} ({FormatBytes(stats.bytesCopied)})");
+            Logger.Info($"    Files downloaded from Autodesk: {stats.downloaded} ({FormatBytes(stats.bytesDownloaded)})");
+            Logger.Info($"    Total files processed: {stats.copied + stats.downloaded}");
+            
+            if (stats.copied > 0)
+            {
+                var timeSaved = EstimateTimeSaved(stats.bytesCopied);
+                Logger.Info($"    Estimated time saved: {timeSaved}");
+                Logger.Info($"    Bandwidth saved: {FormatBytes(stats.bytesCopied)}");
+            }
+            Logger.Info("=================================================================================");
+        }
+    }
+    
+    private string FormatBytes(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+    
+    private string EstimateTimeSaved(long bytesCopied)
+    {
+        // Estimate based on 5 MB/s download speed (adjust based on your typical speeds)
+        double estimatedDownloadSpeed = 5 * 1024 * 1024; // 5 MB/s in bytes
+        double secondsSaved = bytesCopied / estimatedDownloadSpeed;
+        TimeSpan timeSaved = TimeSpan.FromSeconds(secondsSaved);
+        
+        if (timeSaved.TotalHours >= 1)
+            return $"{timeSaved.Hours}h {timeSaved.Minutes}m";
+        else if (timeSaved.TotalMinutes >= 1)
+            return $"{timeSaved.Minutes}m {timeSaved.Seconds}s";
+        else
+            return $"{timeSaved.Seconds}s";
+    }
+    
+    private BackupManifest? LoadPreviousBackupManifest()
+    {
+        if (Config.ForceFullDownload)
+        {
+            Logger.Info("=> Force full download enabled, skipping incremental backup optimization");
+            return null;
+        }
+        
+        try
+        {
+            // Get parent directory (two levels up since we already created the timestamped directory)
+            // Config.BackupDirectory is now something like C:\Backup\2024-01-01_10-30
+            // We need to look in C:\Backup for other backup directories
+            string currentBackupDir = Config.BackupDirectory.TrimEnd('\\');
+            string parentDir = Directory.GetParent(currentBackupDir)?.FullName;
+            
+            if (string.IsNullOrEmpty(parentDir))
+            {
+                Logger.Info("=> No parent directory found, performing full backup");
+                return null;
+            }
+            
+            // Get all backup directories (matching timestamp pattern)
+            var backupDirectories = GetDirectories(parentDir)
+                .Where(d => !d.FullName.Equals(currentBackupDir, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            
+            if (backupDirectories.Count == 0)
+            {
+                Logger.Info("=> No previous backups found, performing full backup");
+                return null;
+            }
+            
+            // Sort by creation time descending to get the most recent
+            var mostRecentBackup = backupDirectories
+                .OrderByDescending(d => d.CreationTime)
+                .FirstOrDefault();
+            
+            if (mostRecentBackup == null)
+            {
+                Logger.Info("=> No previous backups found, performing full backup");
+                return null;
+            }
+            
+            string manifestPath = Path.Combine(mostRecentBackup.FullName, "BackupManifest.json");
+            if (!System.IO.File.Exists(manifestPath))
+            {
+                Logger.Info($"=> Previous backup at {mostRecentBackup.Name} has no manifest, performing full backup");
+                return null;
+            }
+            
+            var manifest = BackupManifest.LoadFromFile(manifestPath);
+            if (manifest != null)
+            {
+                // Validate the manifest by checking if at least some files exist
+                bool isValid = false;
+                int filesToCheck = Math.Min(10, manifest.Files.Count); // Check up to 10 files
+                int filesChecked = 0;
+                
+                foreach (var kvp in manifest.Files.Take(filesToCheck))
+                {
+                    // Convert forward slashes back to OS-specific separators for file path
+                    var filePath = kvp.Key.Replace('/', Path.DirectorySeparatorChar);
+                    var fullPath = Path.Combine(mostRecentBackup.FullName, filePath);
+                    
+                    if (System.IO.File.Exists(fullPath))
+                    {
+                        isValid = true;
+                        break;
+                    }
+                    filesChecked++;
+                }
+                
+                if (!isValid && filesChecked > 0)
+                {
+                    Logger.Warn($"Previous backup manifest appears invalid (no files found), performing full backup");
+                    return null;
+                }
+                
+                Logger.Info($"=> Using previous backup from {mostRecentBackup.Name} for incremental sync");
+                manifest.BackupDirectory = mostRecentBackup.FullName; // Update to actual directory path
+            }
+            return manifest;
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Failed to load previous backup manifest: {ex.Message}");
+            return null;
+        }
+    }
+    
+    private static string SanitizeProjectName(string projectName)
+    {
+        // Replace invalid path characters with underscore
+        var invalidChars = Path.GetInvalidFileNameChars()
+            .Concat(new[] { '/', '\\' }) // Also replace path separators
+            .Distinct();
+        
+        string sanitized = projectName;
+        foreach (char c in invalidChars)
+        {
+            sanitized = sanitized.Replace(c, '_');
+        }
+        
+        return sanitized;
+    }
+    
+    private void GenerateBackupManifest(List<ProjectBackup> projects)
+    {
+        try
+        {
+            var manifest = new BackupManifest
+            {
+                BackupDate = DateTime.Now,
+                BackupDirectory = Config.BackupDirectory
+            };
+            
+            foreach (var project in projects)
+            {
+                foreach (var file in project.FilesRecursive)
+                {
+                    // Use sanitized project name and normalize path separators for consistent manifest keys
+                    var sanitizedProjectName = SanitizeProjectName(project.Name);
+                    var relativePath = Path.Combine(sanitizedProjectName, file.GetPath()[1..])
+                        .Replace('\\', '/');
+                    
+                    var entry = new FileManifestEntry
+                    {
+                        FileId = file.FileId,
+                        VersionNumber = file.VersionNumber,
+                        LastModifiedTime = file.LastModifiedTime,
+                        StorageSize = file.StorageSize,
+                        Name = file.Name,
+                        ProjectId = project.ProjectId
+                    };
+                    manifest.AddFile(relativePath, entry);
+                }
+            }
+            
+            string manifestPath = Path.Combine(Config.BackupDirectory, "BackupManifest.json");
+            manifest.SaveToFile(manifestPath);
+            Logger.Info($"=> Backup manifest saved to {manifestPath}");
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Failed to generate backup manifest: {ex.Message}");
+        }
     }
 }

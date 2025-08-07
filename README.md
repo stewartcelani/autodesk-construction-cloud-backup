@@ -7,12 +7,29 @@
 ACCBackup is a C# console application built to backup all Autodesk Construction Cloud/BIM360 projects in your account via [Autodesk Platform Services (formerly Autodesk Forge)](https://aps.autodesk.com/).
 
 It can be run as a one-off or scheduled via a script. It was designed to fulfill a need that Veeam Backup didn't support. 
-The only products on the market at the time were $6k AUD per year, took 15-20 hours to backup what ACCBackup does in 3 hours, and required each project to be manually configured as a separate task/job. 
+The only products on the market at the time were $6k AUD per year, took 15-20 hours to backup what ACCBackup does in 3 hours (or ~30 minutes with v1.1.0's incremental backup for mostly unchanged data), and required each project to be manually configured as a separate task/job. 
 
 By default, ACCBackup will backup all projects in your account.
 
 **Update 27/07/2025:**
 Since [initial release](https://github.com/stewartcelani/autodesk-construction-cloud-backup/releases) in May 2022 I've been using ACCBackup to run nightly backups of (now) 170~ projects @ 225 GB~ in 8 hours without issues.
+
+### New in v1.1.0: Incremental Backup
+
+ACCBackup now features **incremental backup** which can reduce backup times by up to 95% for unchanged files. Instead of re-downloading every file, ACCBackup intelligently:
+- Detects unchanged files by comparing metadata (FileId, VersionNumber, LastModifiedTime, StorageSize)
+- Copies unchanged files from the previous backup instead of downloading
+- Only downloads new or modified files from Autodesk
+
+**Performance improvements:** A 250GB backup that previously took 12 hours can now complete in ~30 minutes when most files are unchanged.
+
+**How it works:**
+- Automatically enabled when using `--backupstorotate` (even with value of 1)
+- Creates a `BackupManifest.json` in each backup for tracking file metadata
+- Verifies file integrity after copying from previous backup
+- Falls back to downloading if local copy verification fails
+
+To force a full download (bypass incremental backup), use the `--force-full-download` flag.
 
 
 ### Prerequities
@@ -91,6 +108,10 @@ backed up.
 
 --smtpenablessl             (Default: false) Backup summary notification email: SMTP over SSL.
 
+--force-full-download       (Default: false) Force full download of all files, bypassing incremental
+                            backup optimization. Use this if you want to ensure all files are
+                            re-downloaded from Autodesk rather than copied from previous backup.
+
 --help                      Display this help screen.
 
 --version                   Display version information.
@@ -110,6 +131,12 @@ Example of a daily backup with 5 daily backup folders rotating:
 ```
 ACCBackup.exe --backupdirectory "C:\ACCBackup\Daily" --clientid "DRO4zxzt71HCkL34cn2tAUSRS0OQGaRT" --clientsecret "tFRHKhuIrGQUi5d3" --accountid "9b3cc923-d920-4fee-ae91-5e9c8e4040rb" --backupstorotate 5
 ```
+
+Example of daily incremental backup (v1.1.0+):
+```
+ACCBackup.exe --backupdirectory "C:\ACCBackup\Daily" --clientid "DRO4zxzt71HCkL34cn2tAUSRS0OQGaRT" --clientsecret "tFRHKhuIrGQUi5d3" --accountid "9b3cc923-d920-4fee-ae91-5e9c8e4040rb" --backupstorotate 1
+```
+After the first full backup, subsequent backups will use incremental sync, dramatically reducing backup time for unchanged files.
 Example of a weekly backup with 4 weekly backup folders rotating:
 
 ```

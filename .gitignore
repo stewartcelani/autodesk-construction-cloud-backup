@@ -36,3 +36,4 @@ Desktop.ini
 *.secret
 *.secret.json
 *repomix*.txt
+/.claude

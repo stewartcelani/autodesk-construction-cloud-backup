@@ -5,6 +5,10 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <RootNamespace>AutodeskConstructionCloud.ApiClient</RootNamespace>
+        <Version>1.1.0</Version>
+        <AssemblyVersion>1.1.0.0</AssemblyVersion>
+        <FileVersion>1.1.0.0</FileVersion>
+        <PackageReleaseNotes>Added incremental backup feature for dramatically faster backups</PackageReleaseNotes>
     </PropertyGroup>
 
     <ItemGroup>
