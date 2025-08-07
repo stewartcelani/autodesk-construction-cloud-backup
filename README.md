@@ -1,7 +1,7 @@
 # Autodesk Construction Cloud Backup
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/stewartcelani/autodesk-construction-cloud-backup)
 ![GitHub license](https://img.shields.io/github/license/stewartcelani/autodesk-construction-cloud-backup)
-![.NET](https://img.shields.io/badge/.NET-8.0-blueviolet)
+![.NET](https://img.shields.io/badge/.NET-9.0-blueviolet)
 ![GitHub last commit](https://img.shields.io/github/last-commit/stewartcelani/autodesk-construction-cloud-backup)
 
 ACCBackup is a C# console application built to backup all Autodesk Construction Cloud/BIM360 projects in your account via [Autodesk Platform Services (formerly Autodesk Forge)](https://aps.autodesk.com/).
@@ -11,13 +11,13 @@ The only products on the market at the time were $6k AUD per year, took 15-20 ho
 
 By default, ACCBackup will backup all projects in your account.
 
-**Update 27/07/2025:**
+**Update 07/08/2025:**
 Since [initial release](https://github.com/stewartcelani/autodesk-construction-cloud-backup/releases) in May 2022 I've been using ACCBackup to run nightly backups of (now) 170~ projects @ 225 GB~ in 8 hours without issues.
 
 ### New in v1.1.0: Incremental Backup
 
 ACCBackup now features **incremental backup** which can reduce backup times by up to 95% for unchanged files. Instead of re-downloading every file, ACCBackup intelligently:
-- Detects unchanged files by comparing metadata (FileId, VersionNumber, LastModifiedTime, StorageSize)
+- Detects unchanged files by comparing Autodesk API metadata (FileId, VersionNumber, LastModifiedTime, StorageSize)
 - Copies unchanged files from the previous backup instead of downloading
 - Only downloads new or modified files from Autodesk
 
@@ -48,7 +48,7 @@ To force a full download (bypass incremental backup), use the `--force-full-down
 
    
 ### Install
-- Install latest [.NET Runtime 8.X.X](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) -- only the console version is required ("The .NET Runtime contains just the components needed to run a console app. Typically, you'd also install either the ASP.NET Core Runtime or .NET Desktop Runtime.")
+- Install latest [.NET Runtime 9.X.X](https://dotnet.microsoft.com/en-us/download/dotnet/9.0) -- only the console version is required ("The .NET Runtime contains just the components needed to run a console app. Typically, you'd also install either the ASP.NET Core Runtime or .NET Desktop Runtime.")
 - Download the .zip via [the releases tab](https://github.com/stewartcelani/autodesk-construction-cloud-backup/releases)
 - Unzip and run (see examples below)
 
@@ -80,7 +80,9 @@ settings of 15 RetryAttempts with InitialRetryInSeconds 2 totals 4 minutes of re
 --dryrun                    (Default: false) Backup will only create 0 byte placeholder files instead of downloading
 them, will still create full file structure.
 
---backupstorotate           (Default: 1) Number of backups to to maintain.
+--backupstorotate           (Default: 1) Number of previous backups to maintain (in addition 
+                            to the current backup). Minimum 1 is required for incremental 
+                            backup to work.
 
 --projectstobackup          Comma separated list of project names OR project ids to backup. If none given, all projects will be
 backed up.

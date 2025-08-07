@@ -293,10 +293,11 @@ public class Backup : IBackup
                 .ToList();
                 
             Logger.Trace(
-                $"Root backup directory ({parentDir}) contains {backupDirectories.Count + 1}/{Config.BackupsToRotate} backup directories (including current)");
+                $"Root backup directory ({parentDir}) contains {backupDirectories.Count + 1} backup directories (including current), keeping {Config.BackupsToRotate} previous + 1 current");
             
-            // We add 1 to count because we exclude the current backup from the list
-            if (backupDirectories.Count + 1 <= Config.BackupsToRotate) break;
+            // Keep BackupsToRotate number of previous backups (plus the current one)
+            // This ensures incremental backup always has at least one previous backup to compare
+            if (backupDirectories.Count <= Config.BackupsToRotate) break;
 
             DirectoryInfo oldestDirectory = backupDirectories.MinBy(x => x.CreationTime)!;
             
@@ -511,9 +512,24 @@ public class Backup : IBackup
             }
             return manifest;
         }
+        catch (FileNotFoundException ex)
+        {
+            Logger.Warn($"Previous manifest file not found: {ex.Message}");
+            return null;
+        }
+        catch (JsonException ex)
+        {
+            Logger.Warn($"Failed to parse previous manifest JSON: {ex.Message}");
+            return null;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Logger.Warn($"Access denied to previous manifest: {ex.Message}");
+            return null;
+        }
         catch (Exception ex)
         {
-            Logger.Warn($"Failed to load previous backup manifest: {ex.Message}");
+            Logger.Warn($"Unexpected error loading previous manifest: {ex.Message}");
             return null;
         }
     }
