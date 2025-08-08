@@ -29,7 +29,7 @@ public class MockHttpMessageHandler : HttpMessageHandler
 
         if (request.Content is not null) Input = await request.Content.ReadAsStringAsync(cancellationToken);
 
-        MockHttpMessageHandlerMapping mapping =
+        var mapping =
             _messageHandlerMappings.First(m => m.RequestUri == request.RequestUri);
 
         return new HttpResponseMessage

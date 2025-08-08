@@ -1,6 +1,6 @@
-﻿using Polly;
+﻿using System.Net;
+using Polly;
 using Polly.Retry;
-using System.Net.Http;
 
 namespace ACC.ApiClient;
 
@@ -22,15 +22,16 @@ public class ApiClientConfiguration : ApiClientOptions
     public AsyncRetryPolicy GetRetryPolicy(int maxRetryAttempts, int initialRetryDelayInSeconds)
     {
         return Policy
-            .Handle<Exception>(ex => ex is not HttpRequestException httpEx || httpEx.StatusCode != System.Net.HttpStatusCode.Forbidden)
+            .Handle<Exception>(ex =>
+                ex is not HttpRequestException httpEx || httpEx.StatusCode != HttpStatusCode.Forbidden)
             .WaitAndRetryAsync(
                 maxRetryAttempts,
                 retryAttempt => TimeSpan.FromSeconds(retryAttempt * initialRetryDelayInSeconds),
                 (exception, sleepDuration, retryCount, context) =>
                 {
-                    string message = "Error communicating with Autodesk API. " +
-                                     "Expecting this to be a transient error. " +
-                                     $"Retry {retryCount}/{maxRetryAttempts} in {sleepDuration.Seconds} seconds.";
+                    var message = "Error communicating with Autodesk API. " +
+                                  "Expecting this to be a transient error. " +
+                                  $"Retry {retryCount}/{maxRetryAttempts} in {sleepDuration.Seconds} seconds.";
                     Logger?.Warn(exception, message);
                 });
     }

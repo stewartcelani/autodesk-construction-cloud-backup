@@ -4,6 +4,7 @@
     <option name="locations">
       <list>
         <option value="$PROJECT_DIR$/Backup/bin/Release/net8.0/publish" />
+        <option value="$PROJECT_DIR$/../../Temp/ACCBackup" />
       </list>
     </option>
   </component>

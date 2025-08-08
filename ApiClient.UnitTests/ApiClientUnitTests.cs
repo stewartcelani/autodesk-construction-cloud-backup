@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using ACC.ApiClient.Entities;
 using FluentAssertions;
@@ -28,7 +27,7 @@ public class ApiClientUnitTests
         const string accountId = "f33e018a-d1f5-4ef3-ae67-606de6aeed87";
 
         // Act
-        ApiClient sut = TwoLeggedApiClient
+        var sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
             .AndClientSecret(clientSecret)
@@ -56,7 +55,7 @@ public class ApiClientUnitTests
         const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
         const string clientSecret = "wE3GFhuIsGJEi3d4";
         const string accountId = "f33e018a-d1f5-4ef3-ae67-606de6aeed87";
-        ILogger logger = new NLogLogger(new NLogLoggerConfiguration
+        ILogger logger = new SerilogLogger(new SerilogLoggerConfiguration
         {
             LogLevel = LogLevel.Fatal,
             LogToConsole = false
@@ -66,7 +65,7 @@ public class ApiClientUnitTests
         httpClient.BaseAddress = baseAddress;
 
         // Act
-        ApiClient sut = TwoLeggedApiClient
+        var sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
             .AndClientSecret(clientSecret)
@@ -90,7 +89,7 @@ public class ApiClientUnitTests
         sut.Config.AccountId.Should().Be(accountId);
         sut.Config.HubId.Should().Be(accountId);
         sut.Config.HttpClient.BaseAddress.Should().Be(baseAddress);
-        sut.Config.Logger.Should().BeOfType<NLogLogger>();
+        sut.Config.Logger.Should().BeOfType<SerilogLogger>();
         sut.Config.Logger.Config.LogLevel.Should().Be(LogLevel.Fatal);
         sut.Config.Logger.Config.LogToConsole.Should().Be(false);
         sut.Config.RetryAttempts.Should().Be(20);
@@ -110,14 +109,14 @@ public class ApiClientUnitTests
             @"{ ""developerMessage"":""The client_id specified does not have access to the api product"", ""moreInfo"": ""https://forge.autodesk.com/en/docs/oauth/v2/developers_guide/error_handling/"", ""errorCode"": ""AUTH-001""}";
         var messageHandlerMapping = new MockHttpMessageHandlerMapping
         {
-            RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+            RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v2/token"),
             Response = forbiddenResponse,
             StatusCode = HttpStatusCode.Forbidden
         };
         var messageHandler = new MockHttpMessageHandler(messageHandlerMapping);
         var httpClient = new HttpClient(messageHandler);
 
-        ApiClient sut = TwoLeggedApiClient
+        var sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
             .AndClientSecret(clientSecret)
@@ -138,7 +137,7 @@ public class ApiClientUnitTests
             .Should()
             .ThrowAsync<HttpRequestException>()
             .Where(e => e.StatusCode == HttpStatusCode.Forbidden && e.Message == forbiddenResponse);
-        messageHandler.NumberOfCalls.Should().Be(4);
+        messageHandler.NumberOfCalls.Should().Be(1); // 403 Forbidden errors are not retried
     }
 
     [Fact]
@@ -152,7 +151,7 @@ public class ApiClientUnitTests
         {
             new()
             {
-                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v2/token"),
                 Response =
                     await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
                 StatusCode = HttpStatusCode.OK
@@ -166,7 +165,7 @@ public class ApiClientUnitTests
         };
         var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
         var httpClient = new HttpClient(messageHandler);
-        ApiClient sut = TwoLeggedApiClient
+        var sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
             .AndClientSecret(clientSecret)
@@ -178,7 +177,7 @@ public class ApiClientUnitTests
                 options.InitialRetryInSeconds = 1;
             })
             .Create();
-        AuthenticationHeaderValue? initialAuthHeader = sut.Config.HttpClient.DefaultRequestHeaders.Authorization;
+        var initialAuthHeader = sut.Config.HttpClient.DefaultRequestHeaders.Authorization;
 
         // Act
         await sut.GetProjects();
@@ -201,14 +200,14 @@ public class ApiClientUnitTests
             @"{""developerMessage"":""The client_id (application key)/client_secret are not valid"",""errorCode"":""AUTH-003"",""more info"":""https://forge.autodesk.com/en/docs/oauth/v2/developers_guide/error_handling/""}";
         var messageHandlerMapping = new MockHttpMessageHandlerMapping
         {
-            RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+            RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v2/token"),
             Response = unauthorizedResponse,
             StatusCode = HttpStatusCode.Unauthorized
         };
         var messageHandler = new MockHttpMessageHandler(messageHandlerMapping);
         var httpClient = new HttpClient(messageHandler);
 
-        ApiClient sut = TwoLeggedApiClient
+        var sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
             .AndClientSecret(clientSecret)
@@ -241,14 +240,14 @@ public class ApiClientUnitTests
         const string accountId = "f33e018a-d1f5-4ef3-ae67-606de6aeed87";
         var messageHandlerMapping = new MockHttpMessageHandlerMapping
         {
-            RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+            RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v2/token"),
             Response = string.Empty,
             StatusCode = HttpStatusCode.InternalServerError
         };
         var messageHandler = new MockHttpMessageHandler(messageHandlerMapping);
         var httpClient = new HttpClient(messageHandler);
 
-        ApiClient sut = TwoLeggedApiClient
+        var sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
             .AndClientSecret(clientSecret)
@@ -283,7 +282,7 @@ public class ApiClientUnitTests
         {
             new()
             {
-                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v2/token"),
                 Response =
                     await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
                 StatusCode = HttpStatusCode.OK
@@ -297,7 +296,7 @@ public class ApiClientUnitTests
         };
         var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
         var httpClient = new HttpClient(messageHandler);
-        ApiClient sut = TwoLeggedApiClient
+        var sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
             .AndClientSecret(clientSecret)
@@ -311,7 +310,7 @@ public class ApiClientUnitTests
             .Create();
 
         // Act
-        List<Project> projects = await sut.GetProjects();
+        var projects = await sut.GetProjects();
 
         // Assert
         projects.Count.Should().Be(1);
@@ -329,7 +328,7 @@ public class ApiClientUnitTests
         {
             new()
             {
-                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v2/token"),
                 Response =
                     await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
                 StatusCode = HttpStatusCode.OK
@@ -343,7 +342,7 @@ public class ApiClientUnitTests
         };
         var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
         var httpClient = new HttpClient(messageHandler);
-        ApiClient sut = TwoLeggedApiClient
+        var sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
             .AndClientSecret(clientSecret)
@@ -378,7 +377,7 @@ public class ApiClientUnitTests
         {
             new()
             {
-                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v2/token"),
                 Response =
                     await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
                 StatusCode = HttpStatusCode.OK
@@ -401,7 +400,7 @@ public class ApiClientUnitTests
         };
         var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
         var httpClient = new HttpClient(messageHandler);
-        ApiClient sut = TwoLeggedApiClient
+        var sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
             .AndClientSecret(clientSecret)
@@ -415,7 +414,7 @@ public class ApiClientUnitTests
             .Create();
 
         // Act
-        List<Project> projects = await sut.GetProjects();
+        var projects = await sut.GetProjects();
 
         // Assert
         projects.Count.Should().Be(2);
@@ -440,7 +439,7 @@ public class ApiClientUnitTests
         {
             new()
             {
-                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v2/token"),
                 Response =
                     await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
                 StatusCode = HttpStatusCode.OK
@@ -462,7 +461,7 @@ public class ApiClientUnitTests
         };
         var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
         var httpClient = new HttpClient(messageHandler);
-        ApiClient sut = TwoLeggedApiClient
+        var sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
             .AndClientSecret(clientSecret)
@@ -474,9 +473,9 @@ public class ApiClientUnitTests
                 options.InitialRetryInSeconds = 1;
             })
             .Create();
-        Folder folder = await sut.GetFolder(projectId, folderId);
-        int initialFolderCount = folder.Subfolders.Count;
-        int initialFilesCount = folder.Files.Count;
+        var folder = await sut.GetFolder(projectId, folderId);
+        var initialFolderCount = folder.Subfolders.Count;
+        var initialFilesCount = folder.Files.Count;
 
         // Act
         await sut.GetFolderContents(folder);
@@ -513,7 +512,7 @@ public class ApiClientUnitTests
         {
             new()
             {
-                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v2/token"),
                 Response =
                     await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
                 StatusCode = HttpStatusCode.OK
@@ -527,7 +526,7 @@ public class ApiClientUnitTests
         };
         var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
         var httpClient = new HttpClient(messageHandler);
-        ApiClient sut = TwoLeggedApiClient
+        var sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
             .AndClientSecret(clientSecret)
@@ -541,7 +540,7 @@ public class ApiClientUnitTests
             .Create();
 
         // Act
-        Folder folder = await sut.GetFolder(projectId, folderId);
+        var folder = await sut.GetFolder(projectId, folderId);
 
         // Assert
         folder.ProjectId.Should().Be(projectId);
@@ -567,7 +566,7 @@ public class ApiClientUnitTests
         {
             new()
             {
-                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v2/token"),
                 Response =
                     await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
                 StatusCode = HttpStatusCode.OK
@@ -582,7 +581,7 @@ public class ApiClientUnitTests
         };
         var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
         var httpClient = new HttpClient(messageHandler);
-        ApiClient sut = TwoLeggedApiClient
+        var sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
             .AndClientSecret(clientSecret)
@@ -596,7 +595,7 @@ public class ApiClientUnitTests
             .Create();
 
         // Act
-        Folder rootFolder = await sut.GetFolder(projectId, folderId);
+        var rootFolder = await sut.GetFolder(projectId, folderId);
 
         // Assert
         rootFolder.ProjectId.Should().Be(projectId);
@@ -624,7 +623,7 @@ public class ApiClientUnitTests
         {
             new()
             {
-                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v2/token"),
                 Response =
                     await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
                 StatusCode = HttpStatusCode.OK
@@ -652,7 +651,7 @@ public class ApiClientUnitTests
         };
         var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
         var httpClient = new HttpClient(messageHandler);
-        ApiClient sut = TwoLeggedApiClient
+        var sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
             .AndClientSecret(clientSecret)
@@ -664,7 +663,7 @@ public class ApiClientUnitTests
                 options.InitialRetryInSeconds = 1;
             })
             .Create();
-        Folder folder = await sut.GetFolder(projectId, folderId);
+        var folder = await sut.GetFolder(projectId, folderId);
 
         // Act
         await sut.GetFolderContents(folder);
@@ -693,7 +692,7 @@ public class ApiClientUnitTests
         {
             new()
             {
-                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v2/token"),
                 Response =
                     await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
                 StatusCode = HttpStatusCode.OK
@@ -714,7 +713,7 @@ public class ApiClientUnitTests
         };
         var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
         var httpClient = new HttpClient(messageHandler);
-        ApiClient sut = TwoLeggedApiClient
+        var sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
             .AndClientSecret(clientSecret)
@@ -728,7 +727,7 @@ public class ApiClientUnitTests
             .Create();
 
         // Act
-        Folder folder = await sut.GetFolder(projectId, folderId, true);
+        var folder = await sut.GetFolder(projectId, folderId, true);
 
         // Assert
         folder.ProjectId.Should().Be(projectId);
@@ -761,7 +760,7 @@ public class ApiClientUnitTests
         {
             new()
             {
-                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v2/token"),
                 Response =
                     await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
                 StatusCode = HttpStatusCode.OK
@@ -789,7 +788,7 @@ public class ApiClientUnitTests
         };
         var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
         var httpClient = new HttpClient(messageHandler);
-        ApiClient sut = TwoLeggedApiClient
+        var sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
             .AndClientSecret(clientSecret)
@@ -803,7 +802,7 @@ public class ApiClientUnitTests
             .Create();
 
         // Act
-        Folder folder = await sut.GetFolder(projectId, folderId, true);
+        var folder = await sut.GetFolder(projectId, folderId, true);
 
         // Assert
         folder.ProjectId.Should().Be(projectId);
@@ -834,7 +833,7 @@ public class ApiClientUnitTests
         {
             new()
             {
-                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v2/token"),
                 Response =
                     await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
                 StatusCode = HttpStatusCode.OK
@@ -848,7 +847,7 @@ public class ApiClientUnitTests
         };
         var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
         var httpClient = new HttpClient(messageHandler);
-        ApiClient sut = TwoLeggedApiClient
+        var sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
             .AndClientSecret(clientSecret)
@@ -862,7 +861,7 @@ public class ApiClientUnitTests
             .Create();
 
         // Act
-        Project project = await sut.GetProject(projectId);
+        var project = await sut.GetProject(projectId);
 
         // Assert
         project.ProjectId.Should().Be(projectId);
@@ -890,7 +889,7 @@ public class ApiClientUnitTests
         {
             new()
             {
-                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v2/token"),
                 Response =
                     await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
                 StatusCode = HttpStatusCode.OK
@@ -910,7 +909,7 @@ public class ApiClientUnitTests
         };
         var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
         var httpClient = new HttpClient(messageHandler);
-        ApiClient sut = TwoLeggedApiClient
+        var sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
             .AndClientSecret(clientSecret)
@@ -924,7 +923,7 @@ public class ApiClientUnitTests
             .Create();
 
         // Act
-        Project project = await sut.GetProject(projectId, true);
+        var project = await sut.GetProject(projectId, true);
 
         // Assert
         project.ProjectId.Should().Be(projectId);
@@ -950,7 +949,7 @@ public class ApiClientUnitTests
         {
             new()
             {
-                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v2/token"),
                 Response =
                     await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
                 StatusCode = HttpStatusCode.OK
@@ -965,7 +964,7 @@ public class ApiClientUnitTests
         };
         var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
         var httpClient = new HttpClient(messageHandler);
-        ApiClient sut = TwoLeggedApiClient
+        var sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
             .AndClientSecret(clientSecret)
@@ -977,19 +976,19 @@ public class ApiClientUnitTests
                 options.InitialRetryInSeconds = 1;
             })
             .Create();
-        Folder rootFolder = await sut.GetFolder(projectId, folderId);
+        var rootFolder = await sut.GetFolder(projectId, folderId);
         rootFolder.Files.Add(FakeData.GetFakeFile());
         rootFolder.Subfolders.Add(FakeData.GetFakeFolder(sut));
         rootFolder.Subfolders[0].Files.Add(FakeData.GetFakeFile());
         rootFolder.Subfolders[0].Subfolders.Add(FakeData.GetFakeFolder(sut));
         rootFolder.Subfolders[0].Subfolders[0].Files.Add(FakeData.GetFakeFile());
         rootFolder.Subfolders[0].Subfolders[0].Subfolders.AddRange(FakeData.GetFakeFolders(8, sut));
-        foreach (Folder subfolder in rootFolder.Subfolders[0].Subfolders[0].Subfolders)
+        foreach (var subfolder in rootFolder.Subfolders[0].Subfolders[0].Subfolders)
             subfolder.Files.Add(FakeData.GetFakeFile());
 
         // Act
-        int subfolderCount = rootFolder.SubfoldersRecursive.Count();
-        int filesCount = rootFolder.FilesRecursive.Count();
+        var subfolderCount = rootFolder.SubfoldersRecursive.Count();
+        var filesCount = rootFolder.FilesRecursive.Count();
 
         // Assert
         subfolderCount.Should().Be(10);
@@ -1011,7 +1010,7 @@ public class ApiClientUnitTests
         {
             new()
             {
-                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v2/token"),
                 Response =
                     await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
                 StatusCode = HttpStatusCode.OK
@@ -1069,7 +1068,7 @@ public class ApiClientUnitTests
         };
         var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
         var httpClient = new HttpClient(messageHandler);
-        ApiClient sut = TwoLeggedApiClient
+        var sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
             .AndClientSecret(clientSecret)
@@ -1081,7 +1080,7 @@ public class ApiClientUnitTests
                 options.InitialRetryInSeconds = 1;
             })
             .Create();
-        Folder folder = await sut.GetFolder(projectId, folderId);
+        var folder = await sut.GetFolder(projectId, folderId);
 
         // Act
         await folder.GetContentsRecursively();
@@ -1107,7 +1106,7 @@ public class ApiClientUnitTests
         {
             new()
             {
-                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v2/token"),
                 Response =
                     await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
                 StatusCode = HttpStatusCode.OK
@@ -1129,7 +1128,7 @@ public class ApiClientUnitTests
         };
         var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
         var httpClient = new HttpClient(messageHandler);
-        ApiClient sut = TwoLeggedApiClient
+        var sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
             .AndClientSecret(clientSecret)
@@ -1141,7 +1140,7 @@ public class ApiClientUnitTests
                 options.InitialRetryInSeconds = 1;
             })
             .Create();
-        Folder folder = await sut.GetFolder(projectId, folderId);
+        var folder = await sut.GetFolder(projectId, folderId);
 
         // Act
         await folder.GetContents();
@@ -1190,7 +1189,7 @@ public class ApiClientUnitTests
         {
             new()
             {
-                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v2/token"),
                 Response =
                     await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
                 StatusCode = HttpStatusCode.OK
@@ -1212,7 +1211,7 @@ public class ApiClientUnitTests
         };
         var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
         var httpClient = new HttpClient(messageHandler);
-        ApiClient sut = TwoLeggedApiClient
+        var sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
             .AndClientSecret(clientSecret)
@@ -1224,11 +1223,11 @@ public class ApiClientUnitTests
                 options.InitialRetryInSeconds = 1;
             })
             .Create();
-        Folder folder = await sut.GetFolder(projectId, folderId);
+        var folder = await sut.GetFolder(projectId, folderId);
 
         // Act
         await folder.GetContents();
-        Folder subfolder = folder.Subfolders[0];
+        var subfolder = folder.Subfolders[0];
 
         // Assert
         messageHandler.NumberOfCalls.Should().Be(3);
@@ -1274,7 +1273,7 @@ public class ApiClientUnitTests
         {
             new()
             {
-                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v2/token"),
                 Response =
                     await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
                 StatusCode = HttpStatusCode.OK
@@ -1296,7 +1295,7 @@ public class ApiClientUnitTests
         };
         var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
         var httpClient = new HttpClient(messageHandler);
-        ApiClient sut = TwoLeggedApiClient
+        var sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
             .AndClientSecret(clientSecret)
@@ -1308,11 +1307,11 @@ public class ApiClientUnitTests
                 options.InitialRetryInSeconds = 1;
             })
             .Create();
-        Folder folder = await sut.GetFolder(projectId, folderId);
+        var folder = await sut.GetFolder(projectId, folderId);
 
         // Act
         await folder.GetContents();
-        File file = folder.Files[0];
+        var file = folder.Files[0];
 
         // Assert
         messageHandler.NumberOfCalls.Should().Be(3);
@@ -1361,7 +1360,7 @@ public class ApiClientUnitTests
         {
             new()
             {
-                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v2/token"),
                 Response =
                     await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
                 StatusCode = HttpStatusCode.OK
@@ -1383,7 +1382,7 @@ public class ApiClientUnitTests
         };
         var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
         var httpClient = new HttpClient(messageHandler);
-        ApiClient sut = TwoLeggedApiClient
+        var sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
             .AndClientSecret(clientSecret)
@@ -1395,13 +1394,13 @@ public class ApiClientUnitTests
                 options.InitialRetryInSeconds = 1;
             })
             .Create();
-        Folder folder = await sut.GetFolder(projectId, folderId);
+        var folder = await sut.GetFolder(projectId, folderId);
         await folder.GetContents();
-        Folder subfolder = folder.Subfolders[0];
+        var subfolder = folder.Subfolders[0];
 
         // Act
-        string folderPath = folder.GetPath();
-        string subfolderPath = subfolder.GetPath();
+        var folderPath = folder.GetPath();
+        var subfolderPath = subfolder.GetPath();
 
         // Assert
         messageHandler.NumberOfCalls.Should().Be(3);
@@ -1424,7 +1423,7 @@ public class ApiClientUnitTests
         {
             new()
             {
-                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v1/authenticate"),
+                RequestUri = new Uri("https://developer.api.autodesk.com/authentication/v2/token"),
                 Response =
                     await new StreamReader(@"ExampleRestApiResponses\AuthenticateResponse.json").ReadToEndAsync(),
                 StatusCode = HttpStatusCode.OK
@@ -1455,7 +1454,7 @@ public class ApiClientUnitTests
         };
         var messageHandler = new MockHttpMessageHandler(messageHandlerMappings);
         var httpClient = new HttpClient(messageHandler);
-        ApiClient sut = TwoLeggedApiClient
+        var sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
             .AndClientSecret(clientSecret)
@@ -1467,17 +1466,17 @@ public class ApiClientUnitTests
                 options.InitialRetryInSeconds = 1;
             })
             .Create();
-        Folder folder = await sut.GetFolder(projectId, folderId);
+        var folder = await sut.GetFolder(projectId, folderId);
         await folder.GetContents();
-        Folder subfolder = folder.Subfolders[0];
+        var subfolder = folder.Subfolders[0];
         await subfolder.GetContents();
-        File folderFile = folder.Files[0];
-        File subfolderFile = subfolder.Files[0];
+        var folderFile = folder.Files[0];
+        var subfolderFile = subfolder.Files[0];
 
 
         // Act
-        string folderFilePath = folderFile.GetPath();
-        string subfolderFilePath = subfolderFile.GetPath();
+        var folderFilePath = folderFile.GetPath();
+        var subfolderFilePath = subfolderFile.GetPath();
 
         // Assert
         messageHandler.NumberOfCalls.Should().Be(4);

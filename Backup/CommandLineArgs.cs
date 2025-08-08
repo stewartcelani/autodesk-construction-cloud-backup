@@ -39,8 +39,9 @@ public class CommandLineArgs
             "Backup will only create 0 byte placeholder files instead of downloading them, will still create full file structure.")]
     public bool DryRun { get; set; }
 
-    [Option(Required = false, Default = 1, 
-        HelpText = "Number of previous backups to maintain (in addition to the current backup). Minimum 1 is required for incremental backup to work.")]
+    [Option(Required = false, Default = 1,
+        HelpText =
+            "Number of previous backups to maintain (in addition to the current backup). Minimum 1 is required for incremental backup to work.")]
     public int BackupsToRotate { get; set; }
 
     [Option("projectstobackup", Required = false, Separator = ',',
@@ -83,7 +84,7 @@ public class CommandLineArgs
     [Option(Required = false, Default = false, HelpText = "Backup summary notification email: SMTP over SSL.")]
     public bool SmtpEnableSsl { get; set; } = false;
 
-    [Option(Required = false, Default = false, 
+    [Option(Required = false, Default = false,
         HelpText = "Force full download of all files, bypassing incremental backup optimization.")]
     public bool ForceFullDownload { get; set; } = false;
 }

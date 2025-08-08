@@ -4,7 +4,7 @@ using BenchmarkDotNet.Engines;
 using Library.Logger;
 using Library.SecretsManager;
 
-[SimpleJob(RunStrategy.Monitoring, launchCount: 1, warmupCount: 0, targetCount: 3)]
+[SimpleJob(RunStrategy.Monitoring, 1, 0, 3)]
 public class DownloadSynchronousVsParallel
 {
     private readonly ApiClient _apiClient;
@@ -16,9 +16,9 @@ public class DownloadSynchronousVsParallel
 
     public DownloadSynchronousVsParallel()
     {
-        string clientId = SecretsManager.GetEnvironmentVariable("acc:clientid");
-        string clientSecret = SecretsManager.GetEnvironmentVariable("acc:clientsecret");
-        string accountId = SecretsManager.GetEnvironmentVariable("acc:accountid");
+        var clientId = SecretsManager.GetEnvironmentVariable("acc:clientid");
+        var clientSecret = SecretsManager.GetEnvironmentVariable("acc:clientsecret");
+        var accountId = SecretsManager.GetEnvironmentVariable("acc:accountid");
 
         _apiClient = TwoLeggedApiClient
             .Configure()
@@ -27,7 +27,7 @@ public class DownloadSynchronousVsParallel
             .ForAccount(accountId)
             .WithOptions(options =>
             {
-                options.Logger = new NLogLogger(new NLogLoggerConfiguration
+                options.Logger = new SerilogLogger(new SerilogLoggerConfiguration
                 {
                     LogLevel = LogLevel.Debug,
                     LogToConsole = true
@@ -50,7 +50,7 @@ public class DownloadSynchronousVsParallel
     {
         var project = await _apiClient.GetProject(_projectId);
         await project.GetContentsRecursively();
-        foreach (var file in project.FilesRecursive) 
+        foreach (var file in project.FilesRecursive)
             await _apiClient.DownloadFile(file, _rootDirectory);
         Directory.Delete(_rootDirectory, true);
     }
