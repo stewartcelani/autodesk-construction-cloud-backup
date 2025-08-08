@@ -22,6 +22,8 @@ been using ACCBackup to run nightly backups of (now) 170~ projects @ 225 GB~ in 
 
 ### New in v1.1.0: Incremental Backup
 
+**Important: ACCBackup now requires .NET 9 Runtime** (upgraded from .NET 8). Please ensure you have [.NET Runtime 9.X.X](https://dotnet.microsoft.com/en-us/download/dotnet/9.0) installed before upgrading.
+
 ACCBackup now features **incremental backup** which can reduce backup times by up to 95% for unchanged files. Instead of
 re-downloading every file, ACCBackup intelligently:
 
@@ -162,6 +164,15 @@ ACCBackup.exe --backupdirectory "C:\ACCBackup\Daily" --clientid "DRO4zxzt71HCkL3
 
 After the first full backup, subsequent backups will use incremental sync, dramatically reducing backup time for
 unchanged files.
+
+Example forcing a full download (bypassing incremental backup):
+
+```
+ACCBackup.exe --backupdirectory "C:\ACCBackup\Daily" --clientid "DRO4zxzt71HCkL34cn2tAUSRS0OQGaRT" --clientsecret "tFRHKhuIrGQUi5d3" --accountid "9b3cc923-d920-4fee-ae91-5e9c8e4040rb" --backupstorotate 1 --force-full-download
+```
+
+Use this when you suspect local files may be corrupted or want to ensure a fresh download from Autodesk.
+
 Example of a weekly backup with 4 weekly backup folders rotating:
 
 ```
