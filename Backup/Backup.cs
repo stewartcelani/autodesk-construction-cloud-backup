@@ -3,6 +3,7 @@ using System.Net.Mail;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading.Channels;
 using ACC.ApiClient;
 using ACC.ApiClient.Entities;
 using ACC.Backup.Entities;
@@ -64,20 +65,74 @@ public class Backup : IBackup
         if (previousManifest != null) ApiClient.SetPreviousBackupManifest(previousManifest);
 
         LogProjectsSelectedForBackup(_projects);
-        foreach (var project in _projects)
+
+        // Create a channel for the producer-consumer pipeline
+        var enumerationChannel = Channel.CreateUnbounded<ProjectBackup>(new UnboundedChannelOptions
         {
-            Logger.Info($"=> Processing project {project.Name} ({project.ProjectId})");
-            project.BackupStartedAt = DateTime.Now;
-            Logger.Info("Querying for list of folders and files, this may take a while depending on project size.");
-            await project.GetContentsRecursively();
-            Logger.Info("Backup beginning.");
-            // Use sanitized project name for directory creation
-            var sanitizedProjectName = SanitizeProjectName(project.Name);
-            await project.DownloadContentsRecursively(Path.Combine(Config.BackupDirectory, sanitizedProjectName));
-            project.BackupFinishedAt = DateTime.Now;
-            Logger.Info($"=> Finished processing project {project.Name} ({project.ProjectId})");
-            LogBackupSummaryLine(project);
-        }
+            SingleWriter = false, // Multiple enumeration tasks will write
+            SingleReader = true   // Single download task will read
+        });
+
+        // Producer task: Enumerate projects with controlled concurrency
+        var enumerationTask = Task.Run(async () =>
+        {
+            var semaphore = new SemaphoreSlim(3, 3); // Allow up to 3 concurrent enumerations
+            var enumerationTasks = new List<Task>();
+            
+            foreach (var project in _projects)
+            {
+                var projectTask = Task.Run(async () =>
+                {
+                    await semaphore.WaitAsync();
+                    try
+                    {
+                        Logger.Info($"=> Enumerating project {project.Name} ({project.ProjectId})");
+                        Logger.Info("Querying for list of folders and files, this may take a while depending on project size.");
+                        project.BackupStartedAt = DateTime.Now;
+                        await project.GetContentsRecursively();
+                        Logger.Info($"=> Enumeration complete for {project.Name}, queuing for download");
+                        await enumerationChannel.Writer.WriteAsync(project);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Error(ex, $"Failed to enumerate project {project.Name} ({project.ProjectId})");
+                        // Still mark as started/finished for summary reporting
+                        if (project.BackupStartedAt == null)
+                            project.BackupStartedAt = DateTime.Now;
+                        project.BackupFinishedAt = DateTime.Now;
+                        // Queue it anyway so it appears in the summary as failed
+                        await enumerationChannel.Writer.WriteAsync(project);
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                    }
+                });
+                enumerationTasks.Add(projectTask);
+            }
+            
+            await Task.WhenAll(enumerationTasks);
+            enumerationChannel.Writer.Complete();
+        });
+
+        // Consumer task: Download projects sequentially
+        var downloadTask = Task.Run(async () =>
+        {
+            await foreach (var project in enumerationChannel.Reader.ReadAllAsync())
+            {
+                Logger.Info($"=> Downloading project {project.Name} ({project.ProjectId})");
+                Logger.Info("Backup beginning.");
+                // Use sanitized project name for directory creation
+                var sanitizedProjectName = SanitizeProjectName(project.Name);
+                await project.DownloadContentsRecursively(Path.Combine(Config.BackupDirectory, sanitizedProjectName));
+                project.BackupFinishedAt = DateTime.Now;
+                Logger.Info($"=> Finished downloading project {project.Name} ({project.ProjectId})");
+                LogBackupSummaryLine(project);
+            }
+        });
+
+        // Wait for both tasks to complete
+        await Task.WhenAll(enumerationTask, downloadTask);
 
         LogBackupSummary(_projects);
 

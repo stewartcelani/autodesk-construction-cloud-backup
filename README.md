@@ -20,23 +20,35 @@ By default, ACCBackup will backup all projects in your account.
 Since [initial release](https://github.com/stewartcelani/autodesk-construction-cloud-backup/releases) in May 2022 I've
 been using ACCBackup to run nightly backups of (now) 170~ projects @ 225 GB~ in 8 hours without issues.
 
-### New in v1.1.0: Incremental Backup
+### v1.1.0: Gotta Go Fast Edition 🚀
 
 **Important: ACCBackup now requires .NET 9 Runtime** (upgraded from .NET 8). Please ensure you have [.NET Runtime 9.X.X](https://dotnet.microsoft.com/en-us/download/dotnet/9.0) installed before upgrading.
 
-ACCBackup now features **incremental backup** which can reduce backup times by up to 95% for unchanged files. Instead of
-re-downloading every file, ACCBackup intelligently:
+This release is all about **speed**. I have implemented two major performance optimizations that work together to dramatically reduce backup times:
 
+#### 1. Incremental Backup
+Instead of re-downloading every file, ACCBackup now intelligently:
 - Detects unchanged files by comparing Autodesk API metadata (FileId, VersionNumber, LastModifiedTime, StorageSize)
 - Copies unchanged files from the previous backup instead of downloading
 - Only downloads new or modified files from Autodesk
+- **Important:** Each backup folder still contains the FULL project structure with ALL files - "incremental" refers to the optimization method, not the backup contents
 
-**Performance improvements:** A 250GB backup that previously took 12 hours can now complete in ~30 minutes when most
-files are unchanged.
+#### 2. Producer-Consumer Pipeline with Concurrent Enumeration
+ACCBackup now uses advanced parallelization techniques:
+- **Concurrent enumeration**: Up to 3 projects enumerated simultaneously (folder structure queries)
+- **Overlapped operations**: While downloading one project, multiple others are being enumerated
+- **Smart queueing**: Uses C# Channels to queue enumerated projects for sequential downloading
+- **Rate limit safe**: Downloads remain sequential to avoid API throttling
+- Automatically enabled - no configuration required
 
-**How it works:**
+**Combined Performance Improvements:**
+- **Incremental backup:** Reduces download time by up to 95% for unchanged files
+- **Concurrent enumeration:** Up to 3x faster project scanning with parallel processing
+- **Pipeline optimization:** Eliminates idle time between projects
+- **All together:** A 250GB backup that previously took 12 hours can now complete in ~30 minutes
 
-- Automatically enabled when using `--backupstorotate` (even with value of 1)
+**How incremental backup works:**
+- Enabled by default for all backups
 - Creates a `BackupManifest.json` in each backup for tracking file metadata
 - Verifies file integrity after copying from previous backup
 - Falls back to downloading if local copy verification fails

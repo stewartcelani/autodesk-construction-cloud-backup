@@ -30,7 +30,7 @@ var host = Host.CreateDefaultBuilder(args)
             .Enrich.WithExceptionDetails()
             .WriteTo.Console(
                 theme: AnsiConsoleTheme.Code,
-                outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
+                outputTemplate: "[{Timestamp:HH:mm:ss} {SourceContext} {Level:u3}] {Message:lj}{NewLine}{Exception}",
                 restrictedToMinimumLevel: logLevel)
             .WriteTo.File(
                 "Logs/log-.txt",
