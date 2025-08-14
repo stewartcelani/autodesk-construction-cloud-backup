@@ -16,6 +16,11 @@ namespace ACC.Backup;
 public class Backup : IBackup
 {
     private List<ProjectBackup> _projects = new();
+    private DateTime? _backupStartTime;
+    private DateTime? _backupEndTime;
+    private TimeSpan _totalWaitTime = TimeSpan.Zero;
+    private TimeSpan _totalDownloadTime = TimeSpan.Zero;
+    private int _projectsProcessed = 0;
 
     public Backup(BackupConfiguration config, ILogger logger)
     {
@@ -47,6 +52,7 @@ public class Backup : IBackup
     public async Task Run()
     {
         Logger.Info("=> Starting Autodesk Construction Cloud Backup");
+        _backupStartTime = DateTime.Now;
         var allProjects = await ApiClient.GetProjects();
         var filteredProjects = FilterProjects(allProjects);
         _projects = filteredProjects.Select(CastProjectToProjectBackup).ToList();
@@ -115,17 +121,46 @@ public class Backup : IBackup
             enumerationChannel.Writer.Complete();
         });
 
-        // Consumer task: Download projects sequentially
+        // Consumer task: Download projects sequentially with wait time tracking
         var downloadTask = Task.Run(async () =>
         {
+            DateTime? lastDownloadEndTime = null;
+            var isFirstProject = true;
+            
             await foreach (var project in enumerationChannel.Reader.ReadAllAsync())
             {
+                // Track wait time (time between downloads)
+                var projectReceivedTime = DateTime.Now;
+                if (lastDownloadEndTime.HasValue)
+                {
+                    var waitTime = projectReceivedTime - lastDownloadEndTime.Value;
+                    _totalWaitTime = _totalWaitTime.Add(waitTime);
+                    Logger.Debug($"Waited {waitTime.TotalSeconds:F1}s for next project to be enumerated");
+                }
+                else if (!isFirstProject)
+                {
+                    // For the first project after initialization
+                    var waitTime = projectReceivedTime - _backupStartTime!.Value;
+                    _totalWaitTime = _totalWaitTime.Add(waitTime);
+                }
+                isFirstProject = false;
+                
+                // Download the project and track active download time
+                var downloadStartTime = DateTime.Now;
                 Logger.Info($"=> Downloading project {project.Name} ({project.ProjectId})");
                 Logger.Info("Backup beginning.");
+                
                 // Use sanitized project name for directory creation
                 var sanitizedProjectName = SanitizeProjectName(project.Name);
                 await project.DownloadContentsRecursively(Path.Combine(Config.BackupDirectory, sanitizedProjectName));
-                project.BackupFinishedAt = DateTime.Now;
+                
+                var downloadEndTime = DateTime.Now;
+                var downloadTime = downloadEndTime - downloadStartTime;
+                _totalDownloadTime = _totalDownloadTime.Add(downloadTime);
+                lastDownloadEndTime = downloadEndTime;
+                _projectsProcessed++;
+                
+                project.BackupFinishedAt = downloadEndTime;
                 Logger.Info($"=> Finished downloading project {project.Name} ({project.ProjectId})");
                 LogBackupSummaryLine(project);
             }
@@ -133,11 +168,15 @@ public class Backup : IBackup
 
         // Wait for both tasks to complete
         await Task.WhenAll(enumerationTask, downloadTask);
+        _backupEndTime = DateTime.Now;
 
         LogBackupSummary(_projects);
 
         // Log incremental backup statistics
         LogIncrementalBackupStats();
+        
+        // Log pipeline efficiency statistics
+        LogPipelineEfficiencyStats();
 
         // Generate and save backup manifest for incremental backups
         GenerateBackupManifest(_projects);
@@ -188,6 +227,20 @@ public class Backup : IBackup
 
         var htmlSummary = new List<string> { "<h2>ACCBackup Backup Summary</h2>" };
         htmlSummary.AddRange(GetBackupSummary(projects).Select(s => $"<p>{s}</p>"));
+        
+        // Add incremental backup statistics to email
+        var incrementalStatsHtml = GetIncrementalBackupStatsHtml();
+        if (!string.IsNullOrEmpty(incrementalStatsHtml))
+        {
+            htmlSummary.Add(incrementalStatsHtml);
+        }
+        
+        // Add pipeline efficiency statistics to email
+        var pipelineStatsHtml = GetPipelineEfficiencyHtml();
+        if (!string.IsNullOrEmpty(pipelineStatsHtml))
+        {
+            htmlSummary.Add(pipelineStatsHtml);
+        }
 
         try
         {
@@ -229,7 +282,12 @@ public class Backup : IBackup
             projects.SelectMany(p => p.FilesRecursive).Select(f => f.ApiReportedStorageSizeInMb).Sum();
         var totalFileSizeOnDiskInMb =
             projects.SelectMany(p => p.FilesRecursive).Select(f => f.FileSizeOnDiskInMb).Sum();
-        var ts = (TimeSpan)(projects[^1].BackupFinishedAt - projects[0].BackupStartedAt);
+        // Calculate actual total backup time using min start and max end times
+        var earliestStart = projects.Where(p => p.BackupStartedAt.HasValue)
+            .Min(p => p.BackupStartedAt!.Value);
+        var latestEnd = projects.Where(p => p.BackupFinishedAt.HasValue)
+            .Max(p => p.BackupFinishedAt!.Value);
+        var ts = latestEnd - earliestStart;
         var backupDuration = ts.ToString(@"hh\:mm\:ss");
         summary.Add(
             @$"  => Backed up {totalFileSizeOnDiskInMb}/{totalApiReportedStorageSizeInMb} MB in {backupDuration} to {Config.BackupDirectory}");
@@ -245,7 +303,12 @@ public class Backup : IBackup
 
         var totalFileSizeOnDiskInMb =
             projects.SelectMany(p => p.FilesRecursive).Select(f => f.FileSizeOnDiskInMb).Sum();
-        var ts = (TimeSpan)(projects[^1].BackupFinishedAt - projects[0].BackupStartedAt);
+        // Calculate actual total backup time using min start and max end times
+        var earliestStart = projects.Where(p => p.BackupStartedAt.HasValue)
+            .Min(p => p.BackupStartedAt!.Value);
+        var latestEnd = projects.Where(p => p.BackupFinishedAt.HasValue)
+            .Max(p => p.BackupFinishedAt!.Value);
+        var ts = latestEnd - earliestStart;
         var backupDuration = ts.ToString(@"hh\:mm\:ss");
         var backupSummaryLines = projects.Select(GetBackupSummaryLine).ToList();
         var successCount = backupSummaryLines.Count(s => s.Contains("[SUCCESS]"));
@@ -476,6 +539,157 @@ public class Backup : IBackup
         if (timeSaved.TotalMinutes >= 1)
             return $"{timeSaved.Minutes}m {timeSaved.Seconds}s";
         return $"{timeSaved.Seconds}s";
+    }
+    
+    private string GetIncrementalBackupStatsHtml()
+    {
+        var stats = ApiClient.GetIncrementalStats();
+        if (stats.copied == 0 && stats.downloaded == 0)
+            return string.Empty;
+        
+        var html = new List<string>();
+        html.Add("<hr>");
+        html.Add("<h3>Incremental Backup Statistics</h3>");
+        html.Add("<table style='border-collapse: collapse; margin: 10px 0;'>");
+        
+        // Data copied from previous backup
+        html.Add($"<tr><td style='padding: 5px 15px 5px 0;'><strong>Data copied from previous backup:</strong></td>");
+        html.Add($"<td style='padding: 5px;'>{stats.copied} files ({FormatBytes(stats.bytesCopied)})</td></tr>");
+        
+        // Data downloaded from Autodesk
+        html.Add($"<tr><td style='padding: 5px 15px 5px 0;'><strong>Data downloaded from Autodesk:</strong></td>");
+        html.Add($"<td style='padding: 5px;'>{stats.downloaded} files ({FormatBytes(stats.bytesDownloaded)})</td></tr>");
+        
+        // Total files processed
+        html.Add($"<tr><td style='padding: 5px 15px 5px 0;'><strong>Total files processed:</strong></td>");
+        html.Add($"<td style='padding: 5px;'>{stats.copied + stats.downloaded}</td></tr>");
+        
+        if (stats.copied > 0)
+        {
+            // Bandwidth saved
+            html.Add($"<tr><td style='padding: 5px 15px 5px 0;'><strong>Bandwidth saved:</strong></td>");
+            html.Add($"<td style='padding: 5px;'>{FormatBytes(stats.bytesCopied)}</td></tr>");
+            
+            // Estimated time saved
+            var timeSaved = EstimateTimeSaved(stats.bytesCopied);
+            html.Add($"<tr><td style='padding: 5px 15px 5px 0;'><strong>Estimated time saved:</strong></td>");
+            html.Add($"<td style='padding: 5px;'>{timeSaved}</td></tr>");
+            
+            // Efficiency percentage
+            var totalBytes = stats.bytesCopied + stats.bytesDownloaded;
+            if (totalBytes > 0)
+            {
+                var efficiencyPercent = (stats.bytesCopied * 100.0) / totalBytes;
+                html.Add($"<tr><td style='padding: 5px 15px 5px 0;'><strong>Incremental efficiency:</strong></td>");
+                html.Add($"<td style='padding: 5px;'>{efficiencyPercent:F1}% data reused from previous backup</td></tr>");
+            }
+        }
+        
+        html.Add("</table>");
+        
+        return string.Join("", html);
+    }
+    
+    private void LogPipelineEfficiencyStats()
+    {
+        if (_projectsProcessed == 0)
+            return;
+            
+        var totalPipelineTime = _totalDownloadTime + _totalWaitTime;
+        if (totalPipelineTime == TimeSpan.Zero)
+            return;
+            
+        var efficiencyPercent = (_totalDownloadTime.TotalSeconds / totalPipelineTime.TotalSeconds) * 100;
+        var averageWaitTime = _projectsProcessed > 1 ? 
+            TimeSpan.FromSeconds(_totalWaitTime.TotalSeconds / (_projectsProcessed - 1)) : 
+            TimeSpan.Zero;
+        
+        Logger.Info("=================================================================================");
+        Logger.Info("=> Pipeline Efficiency Statistics:");
+        Logger.Info($"    Total pipeline time: {FormatTimeSpan(totalPipelineTime)}");
+        Logger.Info($"    Active download time: {FormatTimeSpan(_totalDownloadTime)} ({efficiencyPercent:F1}%)");
+        Logger.Info($"    Wait time (idle): {FormatTimeSpan(_totalWaitTime)} ({(100 - efficiencyPercent):F1}%)");
+        Logger.Info($"    Projects processed: {_projectsProcessed}");
+        
+        if (_projectsProcessed > 1)
+        {
+            Logger.Info($"    Average wait between projects: {FormatTimeSpan(averageWaitTime)}");
+        }
+        
+        if (_totalWaitTime.TotalMinutes > 1)
+        {
+            Logger.Info($"    Note: {_totalWaitTime.TotalMinutes:F1} minutes spent waiting for project enumeration");
+            Logger.Info($"          Consider increasing concurrent enumeration limit if bottlenecked");
+        }
+        
+        Logger.Info("=================================================================================");
+    }
+    
+    private string GetPipelineEfficiencyHtml()
+    {
+        if (_projectsProcessed == 0)
+            return string.Empty;
+            
+        var totalPipelineTime = _totalDownloadTime + _totalWaitTime;
+        if (totalPipelineTime == TimeSpan.Zero)
+            return string.Empty;
+            
+        var efficiencyPercent = (_totalDownloadTime.TotalSeconds / totalPipelineTime.TotalSeconds) * 100;
+        var averageWaitTime = _projectsProcessed > 1 ? 
+            TimeSpan.FromSeconds(_totalWaitTime.TotalSeconds / (_projectsProcessed - 1)) : 
+            TimeSpan.Zero;
+        
+        var html = new List<string>();
+        html.Add("<hr>");
+        html.Add("<h3>Pipeline Efficiency Statistics</h3>");
+        html.Add("<table style='border-collapse: collapse; margin: 10px 0;'>");
+        
+        // Total pipeline time
+        html.Add($"<tr><td style='padding: 5px 15px 5px 0;'><strong>Total pipeline time:</strong></td>");
+        html.Add($"<td style='padding: 5px;'>{FormatTimeSpan(totalPipelineTime)}</td></tr>");
+        
+        // Active download time
+        html.Add($"<tr><td style='padding: 5px 15px 5px 0;'><strong>Active download time:</strong></td>");
+        html.Add($"<td style='padding: 5px;'>{FormatTimeSpan(_totalDownloadTime)} ({efficiencyPercent:F1}%)</td></tr>");
+        
+        // Wait time
+        html.Add($"<tr><td style='padding: 5px 15px 5px 0;'><strong>Wait time (idle):</strong></td>");
+        html.Add($"<td style='padding: 5px;'>{FormatTimeSpan(_totalWaitTime)} ({(100 - efficiencyPercent):F1}%)</td></tr>");
+        
+        // Projects processed
+        html.Add($"<tr><td style='padding: 5px 15px 5px 0;'><strong>Projects processed:</strong></td>");
+        html.Add($"<td style='padding: 5px;'>{_projectsProcessed}</td></tr>");
+        
+        if (_projectsProcessed > 1)
+        {
+            // Average wait time
+            html.Add($"<tr><td style='padding: 5px 15px 5px 0;'><strong>Average wait between projects:</strong></td>");
+            html.Add($"<td style='padding: 5px;'>{FormatTimeSpan(averageWaitTime)}</td></tr>");
+        }
+        
+        // Pipeline efficiency
+        html.Add($"<tr><td style='padding: 5px 15px 5px 0;'><strong>Pipeline efficiency:</strong></td>");
+        html.Add($"<td style='padding: 5px;'>{efficiencyPercent:F1}% time spent downloading</td></tr>");
+        
+        if (_totalWaitTime.TotalMinutes > 1)
+        {
+            html.Add($"<tr><td colspan='2' style='padding: 10px 0 5px 0; font-style: italic;'>");
+            html.Add($"Note: {_totalWaitTime.TotalMinutes:F1} minutes spent waiting for project enumeration. ");
+            html.Add($"Consider increasing concurrent enumeration if this is a bottleneck.</td></tr>");
+        }
+        
+        html.Add("</table>");
+        
+        return string.Join("", html);
+    }
+    
+    private string FormatTimeSpan(TimeSpan timeSpan)
+    {
+        if (timeSpan.TotalHours >= 1)
+            return $"{(int)timeSpan.TotalHours:D2}:{timeSpan.Minutes:D2}:{timeSpan.Seconds:D2}";
+        if (timeSpan.TotalMinutes >= 1)
+            return $"{(int)timeSpan.TotalMinutes:D2}:{timeSpan.Seconds:D2}";
+        return $"{timeSpan.TotalSeconds:F1}s";
     }
 
     private BackupManifest? LoadPreviousBackupManifest()
