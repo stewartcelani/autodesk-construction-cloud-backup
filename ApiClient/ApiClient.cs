@@ -708,6 +708,55 @@ public class ApiClient : IApiClient
         Config.Logger?.Trace($"Top after guard clause (status code: ${statusCodeAsInt})");
         switch (statusCode)
         {
+            case HttpStatusCode.TooManyRequests:
+            {
+                // Handle 429 rate limit errors with Retry-After header support
+                var rateLimitException = new HttpRequestException(responseString, null, statusCode);
+                
+                // Try to get Retry-After header value
+                if (response.Headers.RetryAfter != null)
+                {
+                    try
+                    {
+                        int retryAfterSeconds = 0;
+                        if (response.Headers.RetryAfter.Delta.HasValue)
+                        {
+                            retryAfterSeconds = (int)Math.Ceiling(response.Headers.RetryAfter.Delta.Value.TotalSeconds);
+                        }
+                        else if (response.Headers.RetryAfter.Date.HasValue)
+                        {
+                            var retryAfter = response.Headers.RetryAfter.Date.Value - DateTimeOffset.UtcNow;
+                            retryAfterSeconds = (int)Math.Ceiling(retryAfter.TotalSeconds);
+                        }
+                        
+                        // Validate and bound the retry-after value
+                        // Minimum 1 second, maximum 600 seconds (10 minutes)
+                        retryAfterSeconds = Math.Min(Math.Max(1, retryAfterSeconds), 600);
+                        
+                        // Add to exception data so retry policy can use it
+                        rateLimitException.Data["RetryAfter"] = retryAfterSeconds;
+                        Config.Logger?.Warn($"Rate limit hit (429) from {requestUri}. Server says retry after {retryAfterSeconds} seconds (bounded to 1-600 range).");
+                        
+                        // Log if we had to cap the value
+                        if (response.Headers.RetryAfter.Delta?.TotalSeconds > 600 ||
+                            (response.Headers.RetryAfter.Date.HasValue && 
+                             (response.Headers.RetryAfter.Date.Value - DateTimeOffset.UtcNow).TotalSeconds > 600))
+                        {
+                            Config.Logger?.Info($"Server requested retry-after exceeding 600 seconds, capped to 600 for safety.");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Config.Logger?.Warn($"Failed to parse Retry-After header: {ex.Message}. Will use exponential backoff.");
+                    }
+                }
+                else
+                {
+                    Config.Logger?.Warn($"Rate limit hit (429) from {requestUri}. No Retry-After header provided.");
+                }
+                
+                throw rateLimitException;
+            }
             case HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden:
             {
                 _accessTokenExpiresAt = DateTime.Now.Subtract(TimeSpan.FromMinutes(1));

@@ -82,7 +82,7 @@ public class Backup : IBackup
         // Producer task: Enumerate projects with controlled concurrency
         var enumerationTask = Task.Run(async () =>
         {
-            var semaphore = new SemaphoreSlim(3, 3); // Allow up to 3 concurrent enumerations
+            var semaphore = new SemaphoreSlim(4, 4); // Allow up to 4 concurrent enumerations
             var enumerationTasks = new List<Task>();
             
             foreach (var project in _projects)
@@ -507,6 +507,19 @@ public class Backup : IBackup
                 var timeSaved = EstimateTimeSaved(stats.bytesCopied);
                 Logger.Info($"    Estimated time saved: {timeSaved}");
                 Logger.Info($"    Bandwidth saved: {FormatBytes(stats.bytesCopied)}");
+                
+                // Show efficiency percentage
+                var totalBytes = stats.bytesCopied + stats.bytesDownloaded;
+                if (totalBytes > 0)
+                {
+                    var efficiencyPercent = (stats.bytesCopied * 100.0) / totalBytes;
+                    // If it rounds to 100% but we downloaded files, show 99.99% to be clear
+                    if (Math.Round(efficiencyPercent, 2) >= 100.0 && stats.bytesDownloaded > 0)
+                    {
+                        efficiencyPercent = 99.99;
+                    }
+                    Logger.Info($"    Incremental efficiency: {efficiencyPercent:F2}% data reused from previous backup");
+                }
             }
 
             Logger.Info("=================================================================================");
@@ -580,8 +593,13 @@ public class Backup : IBackup
             if (totalBytes > 0)
             {
                 var efficiencyPercent = (stats.bytesCopied * 100.0) / totalBytes;
+                // If it rounds to 100% but we downloaded files, show 99.99% to be clear
+                if (Math.Round(efficiencyPercent, 2) >= 100.0 && stats.bytesDownloaded > 0)
+                {
+                    efficiencyPercent = 99.99;
+                }
                 html.Add($"<tr><td style='padding: 5px 15px 5px 0;'><strong>Incremental efficiency:</strong></td>");
-                html.Add($"<td style='padding: 5px;'>{efficiencyPercent:F1}% data reused from previous backup</td></tr>");
+                html.Add($"<td style='padding: 5px;'>{efficiencyPercent:F2}% data reused from previous backup</td></tr>");
             }
         }
         
@@ -618,7 +636,7 @@ public class Backup : IBackup
         
         if (_totalWaitTime.TotalMinutes > 1)
         {
-            Logger.Info($"    Note: {_totalWaitTime.TotalMinutes:F1} minutes spent waiting for project enumeration");
+            Logger.Info($"    Note: {FormatTimeSpan(_totalWaitTime)} spent waiting for project enumeration");
             Logger.Info($"          Consider increasing concurrent enumeration limit if bottlenecked");
         }
         
@@ -674,7 +692,7 @@ public class Backup : IBackup
         if (_totalWaitTime.TotalMinutes > 1)
         {
             html.Add($"<tr><td colspan='2' style='padding: 10px 0 5px 0; font-style: italic;'>");
-            html.Add($"Note: {_totalWaitTime.TotalMinutes:F1} minutes spent waiting for project enumeration. ");
+            html.Add($"Note: {FormatTimeSpan(_totalWaitTime)} spent waiting for project enumeration. ");
             html.Add($"Consider increasing concurrent enumeration if this is a bottleneck.</td></tr>");
         }
         
