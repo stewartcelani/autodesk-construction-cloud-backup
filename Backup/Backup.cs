@@ -689,13 +689,6 @@ public class Backup : IBackup
         html.Add($"<tr><td style='padding: 5px 15px 5px 0;'><strong>Pipeline efficiency:</strong></td>");
         html.Add($"<td style='padding: 5px;'>{efficiencyPercent:F1}% time spent downloading</td></tr>");
         
-        if (_totalWaitTime.TotalMinutes > 1)
-        {
-            html.Add($"<tr><td colspan='2' style='padding: 10px 0 5px 0; font-style: italic;'>");
-            html.Add($"Note: {FormatTimeSpan(_totalWaitTime)} spent waiting for project enumeration. ");
-            html.Add($"Consider increasing concurrent enumeration if this is a bottleneck.</td></tr>");
-        }
-        
         html.Add("</table>");
         
         return string.Join("", html);
