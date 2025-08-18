@@ -1,20 +1,18 @@
 ﻿using ACC.ApiClient;
-using ACC.ApiClient.Entities;
 using Library.Logger;
 using Library.SecretsManager;
-using File = ACC.ApiClient.Entities.File;
 
 /*
  * Required parameters
  */
-string clientId = SecretsManager.GetEnvironmentVariableOrDefaultTo("acc:clientid", "InvalidClientId");
-string clientSecret = SecretsManager.GetEnvironmentVariableOrDefaultTo("acc:clientsecret", "InvalidClientSecret");
-string accountId = SecretsManager.GetEnvironmentVariableOrDefaultTo("acc:accountid", "InvalidAccountId");
+var clientId = SecretsManager.GetEnvironmentVariableOrDefaultTo("acc:clientid", "InvalidClientId");
+var clientSecret = SecretsManager.GetEnvironmentVariableOrDefaultTo("acc:clientsecret", "InvalidClientSecret");
+var accountId = SecretsManager.GetEnvironmentVariableOrDefaultTo("acc:accountid", "InvalidAccountId");
 
 /*
  * Building ApiClient with default parameters
  */
-ApiClient defaultApiClient = TwoLeggedApiClient
+var defaultApiClient = TwoLeggedApiClient
     .Configure()
     .WithClientId(clientId)
     .AndClientSecret(clientSecret)
@@ -24,7 +22,7 @@ ApiClient defaultApiClient = TwoLeggedApiClient
 /*
  * Building ApiClient with all options set
  */
-ApiClient client = TwoLeggedApiClient
+var client = TwoLeggedApiClient
     .Configure()
     .WithClientId(clientId)
     .AndClientSecret(clientSecret)
@@ -34,7 +32,7 @@ ApiClient client = TwoLeggedApiClient
         options.HubId = $"b.{accountId}";
         options.HttpClient = new HttpClient();
         options.DryRun = false;
-        options.Logger = new NLogLogger(new NLogLoggerConfiguration
+        options.Logger = new SerilogLogger(new SerilogLoggerConfiguration
         {
             LogLevel = LogLevel.Trace,
             LogToConsole = true,
@@ -48,22 +46,22 @@ ApiClient client = TwoLeggedApiClient
 /*
  * Getting all projects with above ApiClient
  */
-List<Project> projects = await client.GetProjects();
-foreach (Project p in projects) Console.WriteLine(p.Name);
+var projects = await client.GetProjects();
+foreach (var p in projects) Console.WriteLine(p.Name);
 
 /*
  * Get project by ID
  */
-Project project = await client.GetProject("projectIdGoesHere");
+var project = await client.GetProject("projectIdGoesHere");
 
 /*
  * Load root folder contents
  */
 await project.GetRootFolder();
 
-foreach (File f in project.RootFolder.Files) Console.WriteLine(f.Name);
+foreach (var f in project.RootFolder.Files) Console.WriteLine(f.Name);
 
-foreach (Folder f in project.RootFolder.Subfolders) Console.WriteLine(f.Name);
+foreach (var f in project.RootFolder.Subfolders) Console.WriteLine(f.Name);
 
 /*
  * GetContents or GetContentsRecursively can be called on any folder
@@ -95,9 +93,9 @@ await project.RootFolder.Subfolders[0].DownloadContentsRecursively(@"C:\ExampleB
 /*
  * Example of how to get all projects then back them all up
  */
-List<Project> allProjects = await client.GetProjects();
+var allProjects = await client.GetProjects();
 var downloadRoot = @"C:\ExampleBackupDirectory";
-foreach (Project p in allProjects)
+foreach (var p in allProjects)
 {
     await p.GetContentsRecursively();
     await p.DownloadContentsRecursively(Path.Combine(downloadRoot, p.Name));

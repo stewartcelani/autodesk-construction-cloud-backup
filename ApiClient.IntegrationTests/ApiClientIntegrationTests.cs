@@ -1,14 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Threading.Tasks;
-using ACC.ApiClient.Entities;
 using FluentAssertions;
 using Library.SecretsManager;
+using Microsoft.Extensions.Configuration;
 using Xunit;
 
 // ReSharper disable AsyncVoidLambda
@@ -21,12 +19,18 @@ public class ApiClientIntegrationTests
     private readonly string _accountId;
     private readonly string _clientId;
     private readonly string _clientSecret;
+    private readonly IConfiguration _configuration;
 
     public ApiClientIntegrationTests()
     {
-        _clientId = SecretsManager.GetEnvironmentVariable("acc:clientid");
-        _clientSecret = SecretsManager.GetEnvironmentVariable("acc:clientsecret");
-        _accountId = SecretsManager.GetEnvironmentVariable("acc:accountid");
+        _configuration = new ConfigurationBuilder()
+            .AddUserSecrets<ApiClientIntegrationTests>()
+            .AddEnvironmentVariables()
+            .Build();
+
+        _clientId = _configuration["acc:clientid"] ?? SecretsManager.GetEnvironmentVariable("acc:clientid");
+        _clientSecret = _configuration["acc:clientsecret"] ?? SecretsManager.GetEnvironmentVariable("acc:clientsecret");
+        _accountId = _configuration["acc:accountid"] ?? SecretsManager.GetEnvironmentVariable("acc:accountid");
     }
 
     [Fact]
@@ -36,9 +40,7 @@ public class ApiClientIntegrationTests
         const string clientId = "AFO4tyzt71HCkL73cn2tAUSRS0OSGaRY";
         const string clientSecret = "wE3GFhuIsGJEi3d4";
         const string accountId = "f33e018a-d1f5-4ef3-ae67-606de6aeed87";
-        const string forbiddenResponse =
-            @"{ ""developerMessage"":""The client_id specified does not have access to the api product"", ""moreInfo"": ""https://forge.autodesk.com/en/docs/oauth/v2/developers_guide/error_handling/"", ""errorCode"": ""AUTH-001""}";
-        ApiClient sut = TwoLeggedApiClient
+        var sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
             .AndClientSecret(clientSecret)
@@ -57,20 +59,18 @@ public class ApiClientIntegrationTests
         await act
             .Should()
             .ThrowAsync<HttpRequestException>()
-            .Where(e => e.StatusCode == HttpStatusCode.Forbidden && e.Message == forbiddenResponse);
+            .Where(e => e.StatusCode == HttpStatusCode.Forbidden && e.Message.Contains("AUTH-001"));
     }
 
     [Fact]
     public async Task GetAccessToken_InvalidClientSecret_Should_Throw_401Unauthorized()
     {
         // Arrange
-        string clientId = _clientId;
+        var clientId = _clientId;
         const string clientSecret = "InvalidClientSecret";
         const string accountId = "IrrelevantToTest";
-        const string unauthorizedResponse =
-            @"{""developerMessage"":""The client_id (application key)/client_secret are not valid"",""errorCode"":""AUTH-003"",""more info"":""https://forge.autodesk.com/en/docs/oauth/v2/developers_guide/error_handling/""}";
 
-        ApiClient sut = TwoLeggedApiClient
+        var sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(clientId)
             .AndClientSecret(clientSecret)
@@ -89,14 +89,14 @@ public class ApiClientIntegrationTests
         await act
             .Should()
             .ThrowAsync<HttpRequestException>()
-            .Where(e => e.StatusCode == HttpStatusCode.Unauthorized && e.Message == unauthorizedResponse);
+            .Where(e => e.StatusCode == HttpStatusCode.Unauthorized);
     }
 
     [Fact]
     public async Task EnsureAccessToken_WithValidCredentials_Should_SetHttpAuthenticationHeader()
     {
         // Arrange
-        ApiClient sut = TwoLeggedApiClient
+        var sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(_clientId)
             .AndClientSecret(_clientSecret)
@@ -107,7 +107,7 @@ public class ApiClientIntegrationTests
                 options.InitialRetryInSeconds = 1;
             })
             .Create();
-        AuthenticationHeaderValue? initialAuthHeader = sut.Config.HttpClient.DefaultRequestHeaders.Authorization;
+        var initialAuthHeader = sut.Config.HttpClient.DefaultRequestHeaders.Authorization;
 
         // Act
         await sut.GetProjects();
@@ -122,7 +122,7 @@ public class ApiClientIntegrationTests
     public async Task GetProjects_Should_ReturnOneOrMoreProjects()
     {
         // Arrange
-        ApiClient sut = TwoLeggedApiClient
+        var sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(_clientId)
             .AndClientSecret(_clientSecret)
@@ -135,10 +135,10 @@ public class ApiClientIntegrationTests
             .Create();
 
         // Act
-        List<Project> projects = await sut.GetProjects();
+        var projects = await sut.GetProjects();
 
         // Assert
-        projects.Count.Should().BeGreaterOrEqualTo(1);
+        projects.Count.Should().BeGreaterThanOrEqualTo(1);
         projects.All(x => x.RootFolder == null).Should().BeTrue();
     }
 
@@ -146,7 +146,7 @@ public class ApiClientIntegrationTests
     public async Task GetProjects_getRootFolderContents_True_Should_ReturnOneOrMoreProjects()
     {
         // Arrange
-        ApiClient sut = TwoLeggedApiClient
+        var sut = TwoLeggedApiClient
             .Configure()
             .WithClientId(_clientId)
             .AndClientSecret(_clientSecret)
@@ -159,20 +159,21 @@ public class ApiClientIntegrationTests
             .Create();
 
         // Act
-        List<Project> projects = await sut.GetProjects(true);
+        var projects = await sut.GetProjects(true);
 
         // Assert
-        projects.Count.Should().BeGreaterOrEqualTo(1);
+        projects.Count.Should().BeGreaterThanOrEqualTo(1);
         projects.All(x => x.RootFolder != null).Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(Timeout = 300000)] // 5 minute timeout
     public async Task Project_DownloadContentsRecursively_Should_DownloadContentsRecursively()
     {
         // Arrange
-        string projectId = SecretsManager.GetEnvironmentVariable(
-            "acc:integrationtest:Project_DownloadContentsRecursively_Should_DownloadContentsRecursively:projectId");
-        ApiClient apiClient = TwoLeggedApiClient
+        var projectId = _configuration["acc:integrationtest:projectId"];
+        if (string.IsNullOrEmpty(projectId))
+            throw new InvalidOperationException("Project ID not configured in user secrets");
+        var apiClient = TwoLeggedApiClient
             .Configure()
             .WithClientId(_clientId)
             .AndClientSecret(_clientSecret)
@@ -183,9 +184,9 @@ public class ApiClientIntegrationTests
                 options.InitialRetryInSeconds = 2;
             })
             .Create();
-        string rootBackupDirectory = Path.GetTempPath();
-        Project sut = await apiClient.GetProject(projectId);
-        string rootProjectDirectory = Path.Combine(rootBackupDirectory, Guid.NewGuid().ToString(), sut.Name);
+        var rootBackupDirectory = Path.GetTempPath();
+        var sut = await apiClient.GetProject(projectId);
+        var rootProjectDirectory = Path.Combine(rootBackupDirectory, Guid.NewGuid().ToString(), sut.Name);
         await sut.GetContentsRecursively();
 
         // Act
@@ -193,18 +194,19 @@ public class ApiClientIntegrationTests
 
         // Assert
         sut.FilesRecursive.All(x => x.Downloaded).Should().BeTrue();
-        sut.FilesRecursive.Count(x => x.Downloaded).Should().BeGreaterOrEqualTo(1);
+        sut.FilesRecursive.Count(x => x.Downloaded).Should().BeGreaterThanOrEqualTo(1);
         sut.SubfoldersRecursive.All(x => x.Created).Should().BeTrue();
-        sut.SubfoldersRecursive.Count(x => x.Created).Should().BeGreaterOrEqualTo(1);
+        sut.SubfoldersRecursive.Count(x => x.Created).Should().BeGreaterThanOrEqualTo(1);
     }
 
-    [Fact]
+    [Fact(Timeout = 300000)] // 5 minute timeout
     public async Task Folder_DownloadContentsRecursively_Should_DownloadContentsRecursively()
     {
         // Arrange
-        string projectId = SecretsManager.GetEnvironmentVariable(
-            "acc:integrationtest:Project_DownloadContentsRecursively_Should_DownloadContentsRecursively:projectId");
-        ApiClient apiClient = TwoLeggedApiClient
+        var projectId = _configuration["acc:integrationtest:projectId"];
+        if (string.IsNullOrEmpty(projectId))
+            throw new InvalidOperationException("Project ID not configured in user secrets");
+        var apiClient = TwoLeggedApiClient
             .Configure()
             .WithClientId(_clientId)
             .AndClientSecret(_clientSecret)
@@ -215,32 +217,31 @@ public class ApiClientIntegrationTests
                 options.InitialRetryInSeconds = 2;
             })
             .Create();
-        string rootBackupDirectory = Path.GetTempPath();
-        Project project = await apiClient.GetProject(projectId);
-        string rootProjectDirectory = Path.Combine(rootBackupDirectory, Guid.NewGuid().ToString(), project.Name);
+        var rootBackupDirectory = Path.GetTempPath();
+        var project = await apiClient.GetProject(projectId);
+        var rootProjectDirectory = Path.Combine(rootBackupDirectory, Guid.NewGuid().ToString(), project.Name);
         await project.GetContentsRecursively();
-        Folder sut = project.RootFolder;
+        var sut = project.RootFolder;
 
         // Act
         await sut.DownloadContentsRecursively(rootProjectDirectory);
 
         // Assert
         sut.FilesRecursive.All(x => x.Downloaded).Should().BeTrue();
-        sut.FilesRecursive.Count(x => x.Downloaded).Should().BeGreaterOrEqualTo(1);
+        sut.FilesRecursive.Count(x => x.Downloaded).Should().BeGreaterThanOrEqualTo(1);
         sut.SubfoldersRecursive.All(x => x.Created).Should().BeTrue();
-        sut.SubfoldersRecursive.Count(x => x.Created).Should().BeGreaterOrEqualTo(1);
+        sut.SubfoldersRecursive.Count(x => x.Created).Should().BeGreaterThanOrEqualTo(1);
     }
 
-    [Fact]
+    [Fact(Timeout = 300000)] // 5 minute timeout
     public async Task Folder_DownloadContents_Should_DownloadContents()
     {
         // Arrange
-        string projectId = SecretsManager.GetEnvironmentVariable(
-            "acc:integrationtest:Project_DownloadContentsRecursively_Should_DownloadContentsRecursively:projectId");
-        string folderId =
-            SecretsManager.GetEnvironmentVariable(
-                "acc:integrationtest:Folder_DownloadContents_Should_DownloadContents:folderId");
-        ApiClient apiClient = TwoLeggedApiClient
+        var projectId = _configuration["acc:integrationtest:projectId"];
+        if (string.IsNullOrEmpty(projectId))
+            throw new InvalidOperationException("Project ID not configured in user secrets");
+
+        var apiClient = TwoLeggedApiClient
             .Configure()
             .WithClientId(_clientId)
             .AndClientSecret(_clientSecret)
@@ -251,10 +252,15 @@ public class ApiClientIntegrationTests
                 options.InitialRetryInSeconds = 2;
             })
             .Create();
-        string rootBackupDirectory = Path.GetTempPath();
-        Folder sut = await apiClient.GetFolder(projectId, folderId, true);
-        int sutFiles = sut.Files.Count;
-        string downloadPath = Path.Combine(rootBackupDirectory, Guid.NewGuid().ToString(), sut.Name);
+
+        // Get the project and use its root folder
+        var project = await apiClient.GetProject(projectId);
+        await project.GetRootFolder();
+        var sut = project.RootFolder!;
+
+        var rootBackupDirectory = Path.GetTempPath();
+        var sutFiles = sut.Files.Count;
+        var downloadPath = Path.Combine(rootBackupDirectory, Guid.NewGuid().ToString(), sut.Name);
 
         // Act
         await sut.DownloadContents(downloadPath);

@@ -12,9 +12,9 @@ public static class TestHelpers
         string methodName,
         object[] parameters)
     {
-        Type? type = instance?.GetType();
+        var type = instance?.GetType();
         const BindingFlags bindingAttr = BindingFlags.NonPublic | BindingFlags.Instance;
-        MethodInfo? method = type?.GetMethod(methodName, bindingAttr);
+        var method = type?.GetMethod(methodName, bindingAttr);
 
         return (TReturn?)method?.Invoke(instance, parameters);
     }

@@ -12,6 +12,14 @@ public class ApiClient : IApiClient
 {
     private string? _accessToken;
     private DateTime? _accessTokenExpiresAt;
+    private long _bytesCopied;
+    private long _bytesDownloaded;
+    private int _filesCopied;
+    private int _filesDownloaded;
+    private string _previousBackupDirectory = string.Empty;
+
+    // Incremental backup support
+    private BackupManifest? _previousBackupManifest;
 
     public ApiClient(ApiClientConfiguration config)
     {
@@ -32,7 +40,7 @@ public class ApiClient : IApiClient
             Config.Logger?.Trace(
                 $"Top RetryPolicy, about to call EnsureAccessToken and then folderEndpoint: {projectEndpoint}");
             await EnsureAccessToken();
-            HttpResponseMessage response = await Config.HttpClient.GetAsync(projectEndpoint);
+            var response = await Config.HttpClient.GetAsync(projectEndpoint);
             responseString = await response.Content.ReadAsStringAsync();
             HandleUnsuccessfulStatusCode(
                 responseString,
@@ -70,7 +78,7 @@ public class ApiClient : IApiClient
             {
                 Config.Logger?.Trace("Top RetryPolicy, about to call EnsureAccessToken and then projects endpoint.");
                 await EnsureAccessToken();
-                HttpResponseMessage response = await Config.HttpClient.GetAsync(projectsEndpoint);
+                var response = await Config.HttpClient.GetAsync(projectsEndpoint);
                 responseString = await response.Content.ReadAsStringAsync();
                 HandleUnsuccessfulStatusCode(
                     responseString,
@@ -88,7 +96,7 @@ public class ApiClient : IApiClient
         } while (true);
 
         var projects = new List<Project>();
-        foreach (ProjectResponseProject project in projectsResponses.SelectMany(projectsResponse =>
+        foreach (var project in projectsResponses.SelectMany(projectsResponse =>
                      projectsResponse.Data))
             projects.Add(new Project(this)
             {
@@ -118,7 +126,7 @@ public class ApiClient : IApiClient
             Config.Logger?.Trace(
                 $"Top RetryPolicy, about to call EnsureAccessToken and then folderEndpoint: {folderEndpoint}");
             await EnsureAccessToken();
-            HttpResponseMessage response = await Config.HttpClient.GetAsync(folderEndpoint);
+            var response = await Config.HttpClient.GetAsync(folderEndpoint);
             responseString = await response.Content.ReadAsStringAsync();
             HandleUnsuccessfulStatusCode(
                 responseString,
@@ -128,8 +136,8 @@ public class ApiClient : IApiClient
         var folderResponse = JsonConvert.DeserializeObject<FolderResponse>(responseString);
         if (folderResponse is null)
             throw new ArgumentNullException("folderResponse");
-        string parentFolderId = folderResponse.Data.Relationships.Parent.Data.Id;
-        Folder folder = MapFolderFromFolderContentsResponseData(projectId, parentFolderId, folderResponse.Data);
+        var parentFolderId = folderResponse.Data.Relationships.Parent.Data.Id;
+        var folder = MapFolderFromFolderContentsResponseData(projectId, parentFolderId, folderResponse.Data);
         if (getFolderContents) await GetFolderContents(folder);
 
         Config.Logger?.Debug($"Returning with folderId {folder.FolderId} and name {folder.Name}");
@@ -140,7 +148,7 @@ public class ApiClient : IApiClient
     {
         Config.Logger?.Trace("Top");
         await GetFolderContents(folder);
-        foreach (Folder folderFolder in folder.Subfolders) await GetFolderContentsRecursively(folderFolder);
+        foreach (var folderFolder in folder.Subfolders) await GetFolderContentsRecursively(folderFolder);
 
         Config.Logger?.Debug($"Returning folder (id: {folder.FolderId}, name: {folder.Name}) with " +
                              $"{folder.Files.Count} files and {folder.Subfolders.Count} subfolders");
@@ -149,7 +157,7 @@ public class ApiClient : IApiClient
     public async Task GetFolderContents(Folder folder)
     {
         Config.Logger?.Trace("Top");
-        string folderContentsEndpoint =
+        var folderContentsEndpoint =
             $"https://developer.api.autodesk.com/data/v1/projects/{folder.ProjectId}/folders/{folder.FolderId}/contents";
         const string moreDetailsUrl =
             "https://forge.autodesk.com/en/docs/data/v2/reference/http/projects-project_id-folders-folder_id-contents-GET/";
@@ -162,7 +170,7 @@ public class ApiClient : IApiClient
                 Config.Logger?.Trace(
                     $"Top RetryPolicy, about to call EnsureAccessToken and then folderContentsEndpoint: {folderContentsEndpoint}");
                 await EnsureAccessToken();
-                HttpResponseMessage response = await Config.HttpClient.GetAsync(folderContentsEndpoint);
+                var response = await Config.HttpClient.GetAsync(folderContentsEndpoint);
                 responseString = await response.Content.ReadAsStringAsync();
                 HandleUnsuccessfulStatusCode(
                     responseString,
@@ -192,22 +200,33 @@ public class ApiClient : IApiClient
         Config.Logger?.Trace($"Returning with {folder.Files.Count} files and {folder.Subfolders.Count} folders");
     }
 
-    private static void CreateDirectory(Folder folder, string rootDirectory)
+    public void SetPreviousBackupManifest(BackupManifest manifest)
+    {
+        _previousBackupManifest = manifest;
+        if (manifest != null) _previousBackupDirectory = manifest.BackupDirectory;
+    }
+
+    public (int downloaded, int copied, long bytesDownloaded, long bytesCopied) GetIncrementalStats()
+    {
+        return (_filesDownloaded, _filesCopied, _bytesDownloaded, _bytesCopied);
+    }
+
+    public static void CreateDirectory(Folder folder, string rootDirectory)
     {
         if (folder.DirectoryInfo is not null) return;
-        string path = Path.Combine(rootDirectory, folder.GetPath()[1..]);
+        var path = Path.Combine(rootDirectory, folder.GetPath()[1..]);
         folder.DirectoryInfo = Directory.CreateDirectory(path);
     }
 
     public static void CreateDirectories(IEnumerable<Folder> folders, string rootDirectory)
     {
-        foreach (Folder folder in folders) CreateDirectory(folder, rootDirectory);
+        foreach (var folder in folders) CreateDirectory(folder, rootDirectory);
     }
 
     private async Task<string> GetSignedS3DownloadUrl(string bucketKey, string objectKey, CancellationToken ct)
     {
         // Build the endpoint URL
-        string signedUrlEndpoint =
+        var signedUrlEndpoint =
             $"https://developer.api.autodesk.com/oss/v2/buckets/{bucketKey}/objects/{objectKey}/signeds3download?minutesExpiration=30";
 
         Config.Logger?.Debug($"Requesting signed S3 URL from endpoint: {signedUrlEndpoint}");
@@ -225,42 +244,34 @@ public class ApiClient : IApiClient
 
             // Log all request headers for debugging
             foreach (var header in request.Headers)
-            {
                 Config.Logger?.Debug($"Request header: {header.Key}: {string.Join(", ", header.Value)}");
-            }
 
             Config.Logger?.Debug($"Sending request to {signedUrlEndpoint} with method {request.Method}");
-            DateTime startTime = DateTime.Now;
-            HttpResponseMessage response = await Config.HttpClient.SendAsync(request, ct);
-            TimeSpan duration = DateTime.Now - startTime;
+            var startTime = DateTime.Now;
+            var response = await Config.HttpClient.SendAsync(request, ct);
+            var duration = DateTime.Now - startTime;
 
             Config.Logger?.Debug(
                 $"Received response in {duration.TotalMilliseconds}ms with status code: {(int)response.StatusCode} {response.StatusCode}");
 
             // Log response headers
             foreach (var header in response.Headers)
-            {
                 Config.Logger?.Debug($"Response header: {header.Key}: {string.Join(", ", header.Value)}");
-            }
 
-            string responseString = await response.Content.ReadAsStringAsync(ct);
+            var responseString = await response.Content.ReadAsStringAsync(ct);
             Config.Logger?.Debug($"Response content length: {responseString.Length} characters");
 
             // For debugging, log a small sample of the response if it's very long
             if (responseString.Length > 100)
-            {
                 Config.Logger?.Debug($"Response content sample: {responseString.Substring(0, 100)}...");
-            }
             else
-            {
                 Config.Logger?.Debug($"Response content: {responseString}");
-            }
 
             // Check if the response is valid JSON
-            bool isValidJson = false;
+            var isValidJson = false;
             try
             {
-                var obj = Newtonsoft.Json.JsonConvert.DeserializeObject(responseString);
+                var obj = JsonConvert.DeserializeObject(responseString);
                 isValidJson = obj != null;
                 Config.Logger?.Debug($"Response is valid JSON: {isValidJson}");
             }
@@ -280,8 +291,8 @@ public class ApiClient : IApiClient
             }
 
             // Parse the response to get the signed URL
-            Config.Logger?.Debug($"Parsing response JSON to extract signed URL");
-            var signedUrlResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<SignedUrlResponse>(responseString);
+            Config.Logger?.Debug("Parsing response JSON to extract signed URL");
+            var signedUrlResponse = JsonConvert.DeserializeObject<SignedUrlResponse>(responseString);
 
             if (signedUrlResponse == null || string.IsNullOrEmpty(signedUrlResponse.Url))
             {
@@ -316,17 +327,67 @@ public class ApiClient : IApiClient
         }
     }
 
-    // Helper class to deserialize the API response
-    private class SignedUrlResponse
-    {
-        [Newtonsoft.Json.JsonProperty("url")] public string Url { get; set; }
-    }
-
     public async Task<FileInfo> DownloadFile(
         File file, string rootDirectory, CancellationToken ct = default)
     {
         CreateDirectory(file.ParentFolder, rootDirectory);
-        string downloadPath = Path.Combine(rootDirectory, file.GetPath()[1..]);
+        var downloadPath = Path.Combine(rootDirectory, file.GetPath()[1..]);
+
+        // Check if file exists in previous backup and can be copied instead of downloaded
+        if (_previousBackupManifest != null && !Config.DryRun)
+        {
+            // The manifest key should match how it was created in GenerateBackupManifest
+            // The rootDirectory includes the project name already (sanitized)
+            var rootDirInfo = new DirectoryInfo(rootDirectory);
+            var projectName = rootDirInfo.Name; // This is already sanitized from Backup.cs
+            var fileRelativePath = file.GetPath()[1..];
+            // Normalize path separators to forward slashes to match manifest keys
+            var manifestKey = Path.Combine(projectName, fileRelativePath)
+                .Replace('\\', '/');
+
+            if (_previousBackupManifest.TryGetFile(manifestKey, out var previousEntry))
+                // Check if file is unchanged
+                if (previousEntry != null &&
+                    previousEntry.FileId == file.FileId &&
+                    previousEntry.VersionNumber == file.VersionNumber &&
+                    previousEntry.LastModifiedTime == file.LastModifiedTime &&
+                    previousEntry.StorageSize == file.StorageSize)
+                {
+                    // File is unchanged, try to copy from previous backup
+                    var sourcePath = Path.Combine(_previousBackupDirectory, manifestKey);
+                    if (System.IO.File.Exists(sourcePath))
+                    {
+                        var sourceInfo = new FileInfo(sourcePath);
+                        if (sourceInfo.Length == file.StorageSize)
+                            try
+                            {
+                                // Copy file from previous backup
+                                System.IO.File.Copy(sourcePath, downloadPath, true);
+                                file.FileInfo = new FileInfo(downloadPath);
+                                file.FileSizeOnDisk = file.FileInfo.Length;
+
+                                // Verify the copy
+                                if (file.FileInfo.Length == file.StorageSize)
+                                {
+                                    _filesCopied++;
+                                    _bytesCopied += file.StorageSize;
+                                    Config.Logger?.Info(
+                                        $"[COPIED] {file.FileInfo.FullName} ({file.FileSizeOnDiskInMb} MB)");
+                                    return file.FileInfo;
+                                }
+
+                                Config.Logger?.Warn(
+                                    $"File size mismatch after copy for {file.Name}, downloading instead");
+                                System.IO.File.Delete(downloadPath);
+                            }
+                            catch (Exception ex)
+                            {
+                                Config.Logger?.Debug(
+                                    $"Failed to copy file from previous backup: {ex.Message}, downloading instead");
+                            }
+                    }
+                }
+        }
 
         if (Config.DryRun)
         {
@@ -351,34 +412,30 @@ public class ApiClient : IApiClient
                 var pathSegments = uri.AbsolutePath.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
 
                 // Log all path segments for debugging
-                for (int i = 0; i < pathSegments.Length; i++)
-                {
+                for (var i = 0; i < pathSegments.Length; i++)
                     Config.Logger?.Debug($"Path segment [{i}]: {pathSegments[i]}");
-                }
 
                 // Update indices to correctly extract bucket and object keys
                 // The URL format is typically: https://developer.api.autodesk.com/oss/v2/buckets/wip.dm.prod/objects/object-id.rvt
                 // When split, the segments are: ["oss", "v2", "buckets", "wip.dm.prod", "objects", "object-id.rvt"]
-                string bucketKey = pathSegments[3]; // Corrected from [2] to [3] to get actual bucket name
-                string objectKey = pathSegments[5]; // Corrected from [4] to [5] to get actual object ID
+                var bucketKey = pathSegments[3]; // Corrected from [2] to [3] to get actual bucket name
+                var objectKey = pathSegments[5]; // Corrected from [4] to [5] to get actual object ID
 
                 Config.Logger?.Debug(
                     $"Extracted bucket key: {bucketKey}, object key: {objectKey} from URL: {file.DownloadUrl}");
 
                 // Get signed S3 URL for download
-                string signedUrl = await GetSignedS3DownloadUrl(bucketKey, objectKey, ct);
+                var signedUrl = await GetSignedS3DownloadUrl(bucketKey, objectKey, ct);
 
                 // Log the signed URL (partial for security) for debugging
                 if (!string.IsNullOrEmpty(signedUrl))
                 {
-                    string redactedUrl = signedUrl;
-                    int queryIndex = signedUrl.IndexOf('?');
+                    var redactedUrl = signedUrl;
+                    var queryIndex = signedUrl.IndexOf('?');
 
                     if (queryIndex > 0)
-                    {
                         // Only log the base URL and not the query parameters that contain credentials
                         redactedUrl = signedUrl.Substring(0, queryIndex) + "?[QUERY_PARAMETERS_REDACTED]";
-                    }
 
                     Config.Logger?.Debug($"Generated signed S3 URL: {redactedUrl}");
                 }
@@ -398,7 +455,7 @@ public class ApiClient : IApiClient
                     downloadClient.Timeout = Timeout.InfiniteTimeSpan;
 
                     // Log the request details before sending
-                    Config.Logger?.Debug($"Sending download request to S3 with method: GET");
+                    Config.Logger?.Debug("Sending download request to S3 with method: GET");
 
                     try
                     {
@@ -418,7 +475,7 @@ public class ApiClient : IApiClient
                         // If the request failed, get detailed error information
                         if (!response.IsSuccessStatusCode)
                         {
-                            string errorContent = await response.Content.ReadAsStringAsync(ct);
+                            var errorContent = await response.Content.ReadAsStringAsync(ct);
                             Config.Logger?.Error($"S3 download error response: {errorContent}");
                             response.EnsureSuccessStatusCode(); // This will throw with the status code
                         }
@@ -432,16 +489,16 @@ public class ApiClient : IApiClient
                             FileMode.Create,
                             FileAccess.Write,
                             FileShare.None,
-                            bufferSize: 8192, // Small buffer size to control memory usage
-                            useAsync: true); // Use async IO
+                            8192, // Small buffer size to control memory usage
+                            true); // Use async IO
 
                         // Stream the content to disk in small chunks
-                        byte[] buffer = new byte[8192]; // 8KB buffer
+                        var buffer = new byte[8192]; // 8KB buffer
                         int bytesRead;
                         long totalBytesRead = 0;
 
                         // Read and write in chunks
-                        Config.Logger?.Debug($"Starting to stream file to disk in 8KB chunks");
+                        Config.Logger?.Debug("Starting to stream file to disk in 8KB chunks");
                         while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, ct)) > 0)
                         {
                             await fileStream.WriteAsync(buffer, 0, bytesRead, ct);
@@ -449,22 +506,25 @@ public class ApiClient : IApiClient
 
                             // Log progress for very large files (e.g., every 100MB)
                             if (totalBytesRead % (100 * 1024 * 1024) < 8192)
-                            {
                                 Config.Logger?.Debug($"Downloaded {totalBytesRead / (1024 * 1024)} MB so far");
-                            }
                         }
 
                         file.FileSizeOnDisk = totalBytesRead;
                         file.FileInfo = new FileInfo(downloadPath);
 
+                        // Track download statistics
+                        _filesDownloaded++;
+                        _bytesDownloaded += file.StorageSize;
+
                         Config.Logger?.Info(
                             $"Successfully downloaded file {bucketKey}/{objectKey}, size: {file.FileSizeOnDisk} bytes");
 
                         if (file.FileSizeOnDisk == file.StorageSize)
-                            Config.Logger?.Debug($"{file.FileInfo.FullName} ({file.FileSizeOnDiskInMb} MB)");
+                            Config.Logger?.Info(
+                                $"[DOWNLOADED] {file.FileInfo.FullName} ({file.FileSizeOnDiskInMb} MB)");
                         else
                             Config.Logger?.Warn(
-                                @$"{file.FileInfo.FullName} ({file.FileSizeOnDiskInMb}/{file.ApiReportedStorageSizeInMb} bytes) (Mismatch between size reported by API and size downloaded to disk)");
+                                @$"[DOWNLOADED] {file.FileInfo.FullName} ({file.FileSizeOnDiskInMb}/{file.ApiReportedStorageSizeInMb} MB) (Mismatch between size reported by API and size downloaded to disk)");
                         return file.FileInfo;
                     }
                     catch (HttpRequestException ex)
@@ -499,7 +559,7 @@ public class ApiClient : IApiClient
 
         await Parallel.ForEachAsync(fileList, parallelOptions, async (file, ctx) =>
         {
-            FileInfo fileInfo = await DownloadFile(file, rootDirectory, ctx);
+            var fileInfo = await DownloadFile(file, rootDirectory, ctx);
             fileInfoList.Add(fileInfo);
         });
 
@@ -606,20 +666,23 @@ public class ApiClient : IApiClient
         const string authenticateEndpoint = "https://developer.api.autodesk.com/authentication/v2/token";
         var clientIdAndSecret = $"{Config.ClientId}:{Config.ClientSecret}";
         var base64ClientIdAndSecretBytes = Convert.ToBase64String(Encoding.UTF8.GetBytes(clientIdAndSecret));
-        var values = new Dictionary<string, string>
-        {
-            { "grant_type", "client_credentials" },
-            { "scope", "data:read" }
-        };
-        var body = new FormUrlEncodedContent(values);
         var responseString = string.Empty;
         await Config.RetryPolicy.ExecuteAsync(async () =>
         {
             Config.Logger?.Trace($"Top RetryPolicy, about to call authenticate endpoint: {authenticateEndpoint}");
+
+            // Create fresh content for each retry attempt to avoid ObjectDisposedException
+            var values = new Dictionary<string, string>
+            {
+                { "grant_type", "client_credentials" },
+                { "scope", "data:read" }
+            };
+            var body = new FormUrlEncodedContent(values);
+
             using var requestMessage = new HttpRequestMessage(HttpMethod.Post, authenticateEndpoint);
             requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Basic", base64ClientIdAndSecretBytes);
             requestMessage.Content = body;
-            HttpResponseMessage response = await Config.HttpClient.SendAsync(requestMessage);
+            var response = await Config.HttpClient.SendAsync(requestMessage);
             responseString = await response.Content.ReadAsStringAsync();
             HandleUnsuccessfulStatusCode(
                 responseString,
@@ -627,10 +690,10 @@ public class ApiClient : IApiClient
                 moreDetailsUrl);
         });
         var authResponse = JsonConvert.DeserializeObject<AuthenticateResponse>(responseString);
-        string accessToken = authResponse.AccessToken;
-        int expiresIn = authResponse.ExpiresIn;
-        double modifiedExpiresIn = expiresIn * 0.9;
-        DateTime accessTokenExpiresAt = DateTime.Now.AddSeconds(modifiedExpiresIn);
+        var accessToken = authResponse.AccessToken;
+        var expiresIn = authResponse.ExpiresIn;
+        var modifiedExpiresIn = expiresIn * 0.9;
+        var accessTokenExpiresAt = DateTime.Now.AddSeconds(modifiedExpiresIn);
         Config.Logger?.Debug(
             $"Authenticated -- returning with accessToken: {accessToken}, accessTokenExpiresAt: {accessTokenExpiresAt:O}");
         return (accessToken, accessTokenExpiresAt);
@@ -639,12 +702,61 @@ public class ApiClient : IApiClient
     private void HandleUnsuccessfulStatusCode(string responseString, HttpResponseMessage response,
         string moreDetailsUrl)
     {
-        (HttpStatusCode statusCode, var statusCodeAsInt, Uri requestUri) = (response.StatusCode,
+        var (statusCode, statusCodeAsInt, requestUri) = (response.StatusCode,
             (int)response.StatusCode, response.RequestMessage!.RequestUri!);
         if (statusCodeAsInt is >= 200 and <= 299) return;
         Config.Logger?.Trace($"Top after guard clause (status code: ${statusCodeAsInt})");
         switch (statusCode)
         {
+            case HttpStatusCode.TooManyRequests:
+            {
+                // Handle 429 rate limit errors with Retry-After header support
+                var rateLimitException = new HttpRequestException(responseString, null, statusCode);
+                
+                // Try to get Retry-After header value
+                if (response.Headers.RetryAfter != null)
+                {
+                    try
+                    {
+                        int retryAfterSeconds = 0;
+                        if (response.Headers.RetryAfter.Delta.HasValue)
+                        {
+                            retryAfterSeconds = (int)Math.Ceiling(response.Headers.RetryAfter.Delta.Value.TotalSeconds);
+                        }
+                        else if (response.Headers.RetryAfter.Date.HasValue)
+                        {
+                            var retryAfter = response.Headers.RetryAfter.Date.Value - DateTimeOffset.UtcNow;
+                            retryAfterSeconds = (int)Math.Ceiling(retryAfter.TotalSeconds);
+                        }
+                        
+                        // Validate and bound the retry-after value
+                        // Minimum 1 second, maximum 600 seconds (10 minutes)
+                        retryAfterSeconds = Math.Min(Math.Max(1, retryAfterSeconds), 600);
+                        
+                        // Add to exception data so retry policy can use it
+                        rateLimitException.Data["RetryAfter"] = retryAfterSeconds;
+                        Config.Logger?.Warn($"Rate limit hit (429) from {requestUri}. Server says retry after {retryAfterSeconds} seconds (bounded to 1-600 range).");
+                        
+                        // Log if we had to cap the value
+                        if (response.Headers.RetryAfter.Delta?.TotalSeconds > 600 ||
+                            (response.Headers.RetryAfter.Date.HasValue && 
+                             (response.Headers.RetryAfter.Date.Value - DateTimeOffset.UtcNow).TotalSeconds > 600))
+                        {
+                            Config.Logger?.Info($"Server requested retry-after exceeding 600 seconds, capped to 600 for safety.");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Config.Logger?.Warn($"Failed to parse Retry-After header: {ex.Message}. Will use exponential backoff.");
+                    }
+                }
+                else
+                {
+                    Config.Logger?.Warn($"Rate limit hit (429) from {requestUri}. No Retry-After header provided.");
+                }
+                
+                throw rateLimitException;
+            }
             case HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden:
             {
                 _accessTokenExpiresAt = DateTime.Now.Subtract(TimeSpan.FromMinutes(1));
@@ -671,5 +783,11 @@ public class ApiClient : IApiClient
                 throw httpRequestException;
             }
         }
+    }
+
+    // Helper class to deserialize the API response
+    private class SignedUrlResponse
+    {
+        [JsonProperty("url")] public string Url { get; set; }
     }
 }

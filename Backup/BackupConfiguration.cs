@@ -32,6 +32,7 @@ public class BackupConfiguration
     public string? SmtpUsername { get; private set; }
     public string? SmtpPassword { get; private set; }
     public bool SmtpEnableSsl { get; private set; }
+    public bool ForceFullDownload { get; private set; }
 
     private void MapArgs(CommandLineArgs commandLineArgs)
     {
@@ -61,5 +62,6 @@ public class BackupConfiguration
         SmtpUsername = commandLineArgs.SmtpUsername;
         SmtpPassword = commandLineArgs.SmtpPassword;
         SmtpEnableSsl = commandLineArgs.SmtpEnableSsl;
+        ForceFullDownload = commandLineArgs.ForceFullDownload;
     }
 }

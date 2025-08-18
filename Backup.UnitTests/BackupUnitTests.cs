@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Net.Http;
 using FluentAssertions;
 using Library.Logger;
+using NSubstitute;
 using Polly.Retry;
 using Xunit;
 
@@ -80,9 +81,10 @@ public class BackupUnitTests
     {
         // Arrange
         var backupConfiguration = new BackupConfiguration(_args);
+        var logger = Substitute.For<ILogger>();
 
         // Act
-        var sut = new Backup(backupConfiguration);
+        var sut = new Backup(backupConfiguration, logger);
 
         // Assert
         sut.ApiClient.Config.AccountId.Should().Be(AccountId);
@@ -95,8 +97,6 @@ public class BackupUnitTests
         sut.ApiClient.Config.MaxDegreeOfParallelism.Should().Be(MaxDegreeOfParallelism);
         sut.ApiClient.Config.RetryPolicy.Should().BeOfType<AsyncRetryPolicy>();
         sut.ApiClient.Config.HttpClient.Should().BeOfType<HttpClient>();
-        sut.ApiClient.Config.Logger.Should().BeOfType<NLogLogger>();
         sut.ApiClient.Config.Logger.Should().NotBeNull();
-        sut.ApiClient.Config.Logger!.Config.LogLevel.Should().Be(LogLevel.Trace);
     }
 }

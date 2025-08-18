@@ -8,7 +8,7 @@ public static class Extensions
         IEnumerable<T> recursiveFlatten = rootEnumerable.ToList();
         if (recursiveFlatten.Any() == false) return recursiveFlatten;
 
-        IEnumerable<T> descendants = recursiveFlatten
+        var descendants = recursiveFlatten
             .SelectMany(selector)
             .FlattenRecursive(selector);
 

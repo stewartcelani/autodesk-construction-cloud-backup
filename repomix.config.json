@@ -1,27 +1,45 @@
 {
-    "output": {
-      "filePath": "ACCBackup-repomix-output.txt",
-      "style": "xml",
-      "parsableStyle": true,
-      "compress": false,
-      "headerText": "",
-      "instructionFilePath": "",
-      "fileSummary": true,
-      "directoryStructure": true,
-      "removeComments": false,
-      "removeEmptyLines": true,
-      "topFilesLength": 5,
-      "showLineNumbers": false,
-      "copyToClipboard": true,
-      "includeEmptyDirectories": false
-    },
-    "include": ["**/*"],
-    "ignore": {
-      "useGitignore": true,
-      "useDefaultPatterns": true,
-      "customPatterns": [".idea/", ".run/", "tmp/", "*.log", "*.html", ".run", ".cursor/", "test/", "docs/", "*.pem", "docs/", "Backup.UnitTests/", "Library.Testing/", "ApiClient.UnitTests/", "ApiClient.IntegrationTests/"]
-    },
-    "security": {
-      "enableSecurityCheck": true
-    }
+  "output": {
+    "filePath": "ACCBackup-repomix-output.txt",
+    "style": "xml",
+    "parsableStyle": true,
+    "compress": false,
+    "headerText": "",
+    "instructionFilePath": "",
+    "fileSummary": true,
+    "directoryStructure": true,
+    "removeComments": false,
+    "removeEmptyLines": true,
+    "topFilesLength": 5,
+    "showLineNumbers": false,
+    "copyToClipboard": true,
+    "includeEmptyDirectories": false
+  },
+  "include": [
+    "**/*"
+  ],
+  "ignore": {
+    "useGitignore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": [
+      ".idea/",
+      ".run/",
+      "tmp/",
+      "*.log",
+      "*.html",
+      ".run",
+      ".cursor/",
+      "test/",
+      "docs/",
+      "*.pem",
+      "docs/",
+      "Backup.UnitTests/",
+      "Library.Testing/",
+      "ApiClient.UnitTests/",
+      "ApiClient.IntegrationTests/"
+    ]
+  },
+  "security": {
+    "enableSecurityCheck": true
   }
+}
