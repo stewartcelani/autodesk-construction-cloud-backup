@@ -16,9 +16,9 @@ manually configured as a separate task/job.
 
 By default, ACCBackup will backup all projects in your account.
 
-**Update 07/08/2025:**
+**Update 19/08/2025:**
 Since [initial release](https://github.com/stewartcelani/autodesk-construction-cloud-backup/releases) in May 2022 I've
-been using ACCBackup to run nightly backups of (now) 170~ projects @ 225 GB~ in 8 hours without issues.
+been using ACCBackup to run nightly backups of (now) 170~ projects @ 225 GB~ in 4 hours without issues.
 
 ### v1.1.0: Gotta Go Fast Edition 🚀
 
@@ -42,10 +42,10 @@ ACCBackup now uses advanced parallelization techniques:
 - Automatically enabled - no configuration required
 
 **Combined Performance Improvements:**
-- **Incremental backup:** Reduces download time by up to 95% for unchanged files
+- **Incremental backup:** Reduces download time by up to 75% for unchanged files
 - **Concurrent enumeration:** Up to 3x faster project scanning with parallel processing
-- **Pipeline optimization:** Eliminates idle time between projects
-- **All together:** A 250GB backup that previously took 12 hours can now complete in ~30 minutes
+- **Pipeline optimization:** Minimizes idle time between projects (the bottleneck is now the Autodesk API rate limits)
+- **All together:** A 250GB backup that previously took 12 hours can now complete in 3-4 hours
 
 **How incremental backup works:**
 - Enabled by default for all backups
