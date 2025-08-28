@@ -41,7 +41,7 @@ public class CommandLineArgs
 
     [Option(Required = false, Default = 1,
         HelpText =
-            "Number of previous backups to maintain (in addition to the current backup). Minimum 1 is required for incremental backup to work.")]
+            "Number of previous backups to maintain. Default 1 enables in-place sync mode (single directory that stays in sync). Set to 2+ for timestamped versioned backups.")]
     public int BackupsToRotate { get; set; }
 
     [Option("projectstobackup", Required = false, Separator = ',',
