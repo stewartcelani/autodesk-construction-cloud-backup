@@ -1,6 +1,8 @@
-﻿using System.Net;
+﻿using System.Collections.Concurrent;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Threading;
 using ACC.ApiClient.Entities;
 using ACC.ApiClient.RestApiResponses;
 using Newtonsoft.Json;
@@ -20,6 +22,9 @@ public class ApiClient : IApiClient
 
     // Incremental backup support
     private BackupManifest? _previousBackupManifest;
+    
+    // Thread-safe directory creation lock
+    private static readonly object _directoryCreationLock = new object();
 
     public ApiClient(ApiClientConfiguration config)
     {
@@ -211,11 +216,25 @@ public class ApiClient : IApiClient
         return (_filesDownloaded, _filesCopied, _bytesDownloaded, _bytesCopied);
     }
 
+    /// <summary>
+    /// Creates a directory for the specified folder in a thread-safe manner.
+    /// Uses double-check locking pattern to prevent race conditions during parallel operations.
+    /// </summary>
+    /// <param name="folder">The folder to create a directory for</param>
+    /// <param name="rootDirectory">The root directory path</param>
     public static void CreateDirectory(Folder folder, string rootDirectory)
     {
+        // Fast path: Check without lock first (double-check pattern)
         if (folder.DirectoryInfo is not null) return;
-        var path = Path.Combine(rootDirectory, folder.GetPath()[1..]);
-        folder.DirectoryInfo = Directory.CreateDirectory(path);
+        
+        lock (_directoryCreationLock)
+        {
+            // Check again inside lock to prevent race condition
+            if (folder.DirectoryInfo is not null) return;
+            
+            var path = Path.Combine(rootDirectory, folder.GetPath()[1..]);
+            folder.DirectoryInfo = Directory.CreateDirectory(path);
+        }
     }
 
     public static void CreateDirectories(IEnumerable<Folder> folders, string rootDirectory)
@@ -333,9 +352,10 @@ public class ApiClient : IApiClient
         CreateDirectory(file.ParentFolder, rootDirectory);
         var downloadPath = Path.Combine(rootDirectory, file.GetPath()[1..]);
         
-        // Check if we're in sync mode (previous backup directory is the same as current)
+        // Check if we're in sync mode (rootDirectory is within the previous backup directory)
         var isInPlaceSync = _previousBackupDirectory != null && 
-                           Path.GetFullPath(_previousBackupDirectory).Equals(Path.GetFullPath(rootDirectory), 
+                           Path.GetFullPath(rootDirectory).StartsWith(
+                               Path.GetFullPath(_previousBackupDirectory), 
                                StringComparison.OrdinalIgnoreCase);
 
         // Check if file exists in previous backup and can be copied/skipped instead of downloaded
@@ -369,8 +389,8 @@ public class ApiClient : IApiClient
                             {
                                 file.FileInfo = existingFile;
                                 file.FileSizeOnDisk = existingFile.Length;
-                                _filesCopied++;
-                                _bytesCopied += file.StorageSize;
+                                Interlocked.Increment(ref _filesCopied);
+                                Interlocked.Add(ref _bytesCopied, file.StorageSize);
                                 Config.Logger?.Info(
                                     $"[UNCHANGED] {file.FileInfo.FullName} ({file.FileSizeOnDiskInMb} MB)");
                                 return file.FileInfo;
@@ -387,7 +407,7 @@ public class ApiClient : IApiClient
                     else
                     {
                         // Not in sync mode - try to copy from previous backup
-                        var sourcePath = Path.Combine(_previousBackupDirectory, manifestKey);
+                        var sourcePath = Path.Combine(_previousBackupDirectory, manifestKey.Replace('/', Path.DirectorySeparatorChar));
                         if (System.IO.File.Exists(sourcePath))
                         {
                             var sourceInfo = new FileInfo(sourcePath);
@@ -402,8 +422,8 @@ public class ApiClient : IApiClient
                                     // Verify the copy
                                     if (file.FileInfo.Length == file.StorageSize)
                                     {
-                                        _filesCopied++;
-                                        _bytesCopied += file.StorageSize;
+                                        Interlocked.Increment(ref _filesCopied);
+                                        Interlocked.Add(ref _bytesCopied, file.StorageSize);
                                         Config.Logger?.Info(
                                             $"[COPIED] {file.FileInfo.FullName} ({file.FileSizeOnDiskInMb} MB)");
                                         return file.FileInfo;
@@ -411,7 +431,15 @@ public class ApiClient : IApiClient
 
                                     Config.Logger?.Warn(
                                         $"File size mismatch after copy for {file.Name}, downloading instead");
-                                    System.IO.File.Delete(downloadPath);
+                                    try
+                                    {
+                                        System.IO.File.Delete(downloadPath);
+                                    }
+                                    catch (IOException ioEx)
+                                    {
+                                        Config.Logger?.Debug($"Could not delete mismatched file {downloadPath}: {ioEx.Message}");
+                                        // Continue anyway - will overwrite
+                                    }
                                 }
                                 catch (Exception ex)
                                 {
@@ -547,8 +575,8 @@ public class ApiClient : IApiClient
                         file.FileInfo = new FileInfo(downloadPath);
 
                         // Track download statistics
-                        _filesDownloaded++;
-                        _bytesDownloaded += file.StorageSize;
+                        Interlocked.Increment(ref _filesDownloaded);
+                        Interlocked.Add(ref _bytesDownloaded, file.StorageSize);
 
                         Config.Logger?.Info(
                             $"Successfully downloaded file {bucketKey}/{objectKey}, size: {file.FileSizeOnDisk} bytes");
@@ -583,7 +611,7 @@ public class ApiClient : IApiClient
     public async Task<List<FileInfo>> DownloadFiles(
         IEnumerable<File> fileList, string rootDirectory, CancellationToken ct = default)
     {
-        List<FileInfo> fileInfoList = new();
+        ConcurrentBag<FileInfo> fileInfoBag = new();  // Thread-safe collection
 
         var parallelOptions = new ParallelOptions
         {
@@ -594,10 +622,10 @@ public class ApiClient : IApiClient
         await Parallel.ForEachAsync(fileList, parallelOptions, async (file, ctx) =>
         {
             var fileInfo = await DownloadFile(file, rootDirectory, ctx);
-            fileInfoList.Add(fileInfo);
+            fileInfoBag.Add(fileInfo);  // Safe for concurrent access
         });
 
-        return fileInfoList;
+        return fileInfoBag.ToList();
     }
 
     private Folder MapFolderFromFolderContentsResponseData(string projectId, string parentFolderId,

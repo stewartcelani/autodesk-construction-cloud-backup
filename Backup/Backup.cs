@@ -90,7 +90,7 @@ public class Backup : IBackup
         // Producer task: Enumerate projects with controlled concurrency
         var enumerationTask = Task.Run(async () =>
         {
-            var semaphore = new SemaphoreSlim(4, 4); // Allow up to 4 concurrent enumerations
+            var semaphore = new SemaphoreSlim(3, 3); // Allow up to 3 concurrent enumerations
             var enumerationTasks = new List<Task>();
             
             foreach (var project in _projects)
