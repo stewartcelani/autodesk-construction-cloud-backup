@@ -1,6 +1,45 @@
 # Changelog
 
-## Version 1.1.0 (2025-01-08)
+## Version 1.2.0 (2025-09-22)
+
+### Major Features
+
+- **In-Place Sync Mode**: New backup approach that maintains a single synchronized directory instead of timestamped versions
+    - Enabled by default with `--backupstorotate 1`
+    - Automatically removes obsolete files no longer in ACC
+    - Cleans up empty directories after file removal
+    - Dramatically reduces storage requirements for regular backups
+    - Existing files verified and only re-downloaded if changed
+
+- **Enhanced Thread Safety**: Improved concurrent operations handling
+    - Thread-safe directory creation with double-check locking pattern
+    - Concurrent collections (ConcurrentBag) for parallel file operations
+    - Optimized semaphore limits (3 concurrent project enumerations)
+    - Prevents race conditions during parallel processing
+
+### Breaking Changes
+
+- **`--backupstorotate` parameter behavior changed**:
+    - Value of 1 now enables In-Place Sync Mode (single synchronized directory)
+    - Values of 2+ enable versioned backups with timestamped folders (v1.1.0 behavior)
+    - Users wanting timestamped backups must update scripts to use `--backupstorotate 2` or higher
+
+### Improvements
+
+- Enhanced backup reporting with mode-specific messaging
+- Detailed statistics showing unchanged vs downloaded files
+- Better progress tracking and visibility
+- Improved manifest handling for sync mode operations
+- Automatic cleanup of obsolete files and directories in sync mode
+
+### Technical Details
+
+- Manifest stored and loaded from sync directory itself in sync mode
+- File comparison uses FileId, VersionNumber, LastModifiedTime, and StorageSize
+- Thread-safe counters using Interlocked operations
+- Cleanup process handles both file deletion and empty directory removal
+
+## Version 1.1.0 (2025-08-19)
 
 ### Major Features
 

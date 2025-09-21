@@ -21,6 +21,7 @@ public class Backup : IBackup
     private TimeSpan _totalWaitTime = TimeSpan.Zero;
     private TimeSpan _totalDownloadTime = TimeSpan.Zero;
     private int _projectsProcessed = 0;
+    private BackupManifest? _previousBackupManifest;
 
     public Backup(BackupConfiguration config, ILogger logger)
     {
@@ -63,12 +64,19 @@ public class Backup : IBackup
             return;
         }
 
-        // Create the timestamped backup directory first
-        Config.BackupDirectory = Path.Combine(Config.BackupDirectory, DateTime.Now.ToString("yyyy-MM-dd_HH-mm"));
+        // Create the timestamped backup directory first (unless in sync mode)
+        if (Config.BackupsToRotate != 1)
+        {
+            Config.BackupDirectory = Path.Combine(Config.BackupDirectory, DateTime.Now.ToString("yyyy-MM-dd_HH-mm"));
+        }
+        else
+        {
+            Logger.Info("=> In-place sync mode enabled (--backupstorotate 1)");
+        }
 
         // Load previous backup manifest for incremental backup (before any rotation)
-        var previousManifest = LoadPreviousBackupManifest();
-        if (previousManifest != null) ApiClient.SetPreviousBackupManifest(previousManifest);
+        _previousBackupManifest = LoadPreviousBackupManifest();
+        if (_previousBackupManifest != null) ApiClient.SetPreviousBackupManifest(_previousBackupManifest);
 
         LogProjectsSelectedForBackup(_projects);
 
@@ -82,7 +90,7 @@ public class Backup : IBackup
         // Producer task: Enumerate projects with controlled concurrency
         var enumerationTask = Task.Run(async () =>
         {
-            var semaphore = new SemaphoreSlim(4, 4); // Allow up to 4 concurrent enumerations
+            var semaphore = new SemaphoreSlim(3, 3); // Allow up to 3 concurrent enumerations
             var enumerationTasks = new List<Task>();
             
             foreach (var project in _projects)
@@ -169,6 +177,12 @@ public class Backup : IBackup
         // Wait for both tasks to complete
         await Task.WhenAll(enumerationTask, downloadTask);
         _backupEndTime = DateTime.Now;
+        
+        // Clean up obsolete files in sync mode
+        if (Config.BackupsToRotate == 1)
+        {
+            await CleanupObsoleteFiles(_projects);
+        }
 
         LogBackupSummary(_projects);
 
@@ -294,7 +308,7 @@ public class Backup : IBackup
         return summary;
     }
 
-    private static string GetBackupSummaryHeader(List<ProjectBackup> projects)
+    private string GetBackupSummaryHeader(List<ProjectBackup> projects)
     {
         if (projects.Count == 0) throw new ArgumentNullException(nameof(projects));
 
@@ -319,7 +333,7 @@ public class Backup : IBackup
             @$"ACCBackup: {projects.Count} projects ({successCount} success, {partialFailCount} partial fail, {errorCount} error) - {totalFileSizeOnDiskInMb} MB in {backupDuration} ";
     }
 
-    private static string GetBackupSummaryLine(ProjectBackup project)
+    private string GetBackupSummaryLine(ProjectBackup project)
     {
         if (project.BackupStartedAt is null || project.BackupFinishedAt is null)
             throw new NullReferenceException("Cannot get backup summary with null BackupStartedAt or BackupFinishedAt");
@@ -330,28 +344,61 @@ public class Backup : IBackup
         var ts = (TimeSpan)(project.BackupFinishedAt - project.BackupStartedAt);
         var backupDuration = ts.ToString(@"hh\:mm\:ss");
         var totalFiles = project.FilesRecursive.Count();
-        var filesDownloaded = project.FilesRecursive.Select(f => f.Downloaded).Count();
+        var filesWithInfo = project.FilesRecursive.Where(f => f.Downloaded).Count();
         var totalFolders = project.SubfoldersRecursive.Count();
         var foldersCreated = project.SubfoldersRecursive.Select(f => f.Created).Count();
-        var allFilesDownloaded = project.FilesRecursive.All(f => f.Downloaded);
+        var allFilesProcessed = project.FilesRecursive.All(f => f.Downloaded);
         var allFoldersCreated = project.SubfoldersRecursive.All(f => f.Created);
         var totalFileSizeOnDiskMatchesFileSizeReportedByApi =
             totalFileSizeOnDiskInMb == totalApiReportedStorageSizeInMb;
+        
+        // Get incremental stats to show detailed breakdown
+        var stats = ApiClient.GetIncrementalStats();
+        var isInSyncMode = Config.BackupsToRotate == 1;
+        
         var summary = string.Empty;
-        if (allFilesDownloaded && allFoldersCreated && totalFileSizeOnDiskMatchesFileSizeReportedByApi)
+        if (allFilesProcessed && allFoldersCreated && totalFileSizeOnDiskMatchesFileSizeReportedByApi)
         {
-            summary +=
-                @$"  + [SUCCESS] {project.Name} ({project.ProjectId}) - {totalFileSizeOnDiskInMb} MB in {backupDuration} - {filesDownloaded} files backed up in {foldersCreated} folders";
+            summary += $"  + [SUCCESS] {project.Name} ({project.ProjectId}) - {totalFileSizeOnDiskInMb} MB in {backupDuration} - ";
+            
+            // Format differently based on mode
+            if (isInSyncMode && (stats.copied > 0 || stats.downloaded > 0))
+            {
+                // In sync mode, "copied" means unchanged files that were verified
+                summary += $"{stats.copied} unchanged, {stats.downloaded} downloaded, {filesWithInfo} total files in {foldersCreated} folders";
+            }
+            else if (!isInSyncMode && (stats.copied > 0 || stats.downloaded > 0))
+            {
+                // In versioned mode, "copied" means files copied from previous backup
+                summary += $"{stats.copied} copied, {stats.downloaded} downloaded, {filesWithInfo} total files in {foldersCreated} folders";
+            }
+            else
+            {
+                // Fallback to original format if no incremental stats
+                summary += $"{filesWithInfo} files backed up in {foldersCreated} folders";
+            }
         }
         else
         {
-            if (filesDownloaded > 0)
+            if (filesWithInfo > 0)
                 summary += "  + [PARTIAL FAIL] ";
             else
                 summary += "  + [ERROR] ";
 
-            summary +=
-                @$"{project.Name} ({project.ProjectId}) - {totalFileSizeOnDiskInMb}/{totalApiReportedStorageSizeInMb} MB in {backupDuration} - {filesDownloaded}/{totalFiles} files backed up in {foldersCreated}/{totalFolders} folders";
+            summary += $"{project.Name} ({project.ProjectId}) - {totalFileSizeOnDiskInMb}/{totalApiReportedStorageSizeInMb} MB in {backupDuration} - ";
+            
+            if (isInSyncMode && (stats.copied > 0 || stats.downloaded > 0))
+            {
+                summary += $"{stats.copied} unchanged, {stats.downloaded} downloaded, {filesWithInfo}/{totalFiles} total files in {foldersCreated}/{totalFolders} folders";
+            }
+            else if (!isInSyncMode && (stats.copied > 0 || stats.downloaded > 0))
+            {
+                summary += $"{stats.copied} copied, {stats.downloaded} downloaded, {filesWithInfo}/{totalFiles} total files in {foldersCreated}/{totalFolders} folders";
+            }
+            else
+            {
+                summary += $"{filesWithInfo}/{totalFiles} files backed up in {foldersCreated}/{totalFolders} folders";
+            }
         }
 
         return summary;
@@ -380,6 +427,13 @@ public class Backup : IBackup
 
     private void RotateBackupDirectories()
     {
+        // Skip rotation in sync mode
+        if (Config.BackupsToRotate == 1)
+        {
+            Logger.Debug("In-place sync mode enabled, skipping directory rotation");
+            return;
+        }
+        
         Logger.Debug("Rotating backup directories.");
 
         // Get the executable's directory to ensure we never try to delete it
@@ -440,6 +494,107 @@ public class Backup : IBackup
             .Select(p => new DirectoryInfo(p))
             .Where(dir => backupDirPattern.IsMatch(dir.Name))
             .ToList();
+    }
+    
+    private Task CleanupObsoleteFiles(List<ProjectBackup> projects)
+    {
+        // Only cleanup in sync mode with an existing manifest
+        if (Config.BackupsToRotate != 1 || _previousBackupManifest == null)
+            return Task.CompletedTask;
+            
+        Logger.Info("=> Checking for obsolete files to remove");
+        var currentFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        
+        // Build set of all current files from ACC
+        foreach (var project in projects)
+        {
+            var sanitizedProjectName = SanitizeProjectName(project.Name);
+            foreach (var file in project.FilesRecursive)
+            {
+                var relativePath = Path.Combine(sanitizedProjectName, file.GetPath()[1..])
+                    .Replace('\\', '/');
+                currentFiles.Add(relativePath);
+            }
+        }
+        
+        // Find and delete obsolete files
+        var filesToDelete = new List<string>();
+        foreach (var kvp in _previousBackupManifest.Files)
+        {
+            if (!currentFiles.Contains(kvp.Key))
+            {
+                filesToDelete.Add(kvp.Key);
+            }
+        }
+        
+        if (filesToDelete.Count == 0)
+        {
+            Logger.Info("=> No obsolete files found");
+            return Task.CompletedTask;
+        }
+        
+        // Delete obsolete files
+        var deletedCount = 0;
+        foreach (var relativePath in filesToDelete)
+        {
+            var fullPath = Path.Combine(Config.BackupDirectory, relativePath.Replace('/', Path.DirectorySeparatorChar));
+            if (File.Exists(fullPath))
+            {
+                try
+                {
+                    File.Delete(fullPath);
+                    deletedCount++;
+                    Logger.Info($"[DELETED] Removed obsolete file: {relativePath}");
+                }
+                catch (Exception ex)
+                {
+                    Logger.Warn($"Failed to delete obsolete file {fullPath}: {ex.Message}");
+                }
+            }
+        }
+        
+        if (deletedCount > 0)
+        {
+            Logger.Info($"=> Removed {deletedCount} obsolete file(s)");
+            // Clean up empty directories after file deletion
+            CleanupEmptyDirectories(Config.BackupDirectory);
+        }
+        
+        return Task.CompletedTask;
+    }
+    
+    private void CleanupEmptyDirectories(string path)
+    {
+        try
+        {
+            // Don't delete the root backup directory itself
+            if (path.Equals(Config.BackupDirectory, StringComparison.OrdinalIgnoreCase))
+            {
+                // Just clean subdirectories
+                foreach (var directory in Directory.GetDirectories(path))
+                {
+                    CleanupEmptyDirectories(directory);
+                }
+                return;
+            }
+            
+            // Recursively clean subdirectories first
+            foreach (var directory in Directory.GetDirectories(path))
+            {
+                CleanupEmptyDirectories(directory);
+            }
+            
+            // If this directory is now empty, delete it
+            if (!Directory.EnumerateFileSystemEntries(path).Any())
+            {
+                Directory.Delete(path);
+                Logger.Debug($"[DELETED] Removed empty directory: {Path.GetRelativePath(Config.BackupDirectory, path)}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Debug($"Failed to cleanup directory {path}: {ex.Message}");
+        }
     }
 
 
@@ -713,6 +868,27 @@ public class Backup : IBackup
 
         try
         {
+            // In sync mode, load manifest from the target directory itself
+            if (Config.BackupsToRotate == 1)
+            {
+                var syncManifestPath = Path.Combine(Config.BackupDirectory, "BackupManifest.json");
+                if (File.Exists(syncManifestPath))
+                {
+                    var syncManifest = BackupManifest.LoadFromFile(syncManifestPath);
+                    if (syncManifest != null)
+                    {
+                        Logger.Info($"=> Using existing manifest from sync directory for incremental update");
+                        syncManifest.BackupDirectory = Config.BackupDirectory; // Update to current directory path
+                    }
+                    return syncManifest;
+                }
+                else
+                {
+                    Logger.Info("=> No existing manifest found in sync directory, performing initial sync");
+                    return null;
+                }
+            }
+            
             // Get parent directory (two levels up since we already created the timestamped directory)
             // Config.BackupDirectory is now something like C:\Backup\2024-01-01_10-30
             // We need to look in C:\Backup for other backup directories

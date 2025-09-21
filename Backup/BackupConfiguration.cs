@@ -49,7 +49,7 @@ public class BackupConfiguration
         RetryAttempts = commandLineArgs.RetryAttempts;
         InitialRetryInSeconds = commandLineArgs.InitialRetryInSeconds;
         DryRun = commandLineArgs.DryRun;
-        BackupsToRotate = commandLineArgs.BackupsToRotate == 0 ? 1 : commandLineArgs.BackupsToRotate;
+        BackupsToRotate = commandLineArgs.BackupsToRotate;
         ProjectsToBackup = commandLineArgs.ProjectsToBackup.Select(s => s.Trim()).ToList();
         ProjectsToExclude = commandLineArgs.ProjectsToExclude.Select(s => s.Trim()).ToList();
         DebugLogging = commandLineArgs.DebugLogging;

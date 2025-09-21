@@ -5,10 +5,10 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <RootNamespace>AutodeskConstructionCloud.ApiClient</RootNamespace>
-        <Version>1.1.0</Version>
-        <AssemblyVersion>1.1.0.0</AssemblyVersion>
-        <FileVersion>1.1.0.0</FileVersion>
-        <PackageReleaseNotes>Added incremental backup feature for dramatically faster backups</PackageReleaseNotes>
+        <Version>1.2.0</Version>
+        <AssemblyVersion>1.2.0.0</AssemblyVersion>
+        <FileVersion>1.2.0.0</FileVersion>
+        <PackageReleaseNotes>v1.2.0: In-Place Sync Mode - Single-directory synchronization with automatic cleanup</PackageReleaseNotes>
     </PropertyGroup>
 
     <ItemGroup>
