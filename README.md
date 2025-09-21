@@ -20,7 +20,46 @@ By default, ACCBackup will backup all projects in your account.
 Since [initial release](https://github.com/stewartcelani/autodesk-construction-cloud-backup/releases) in May 2022 I've
 been using ACCBackup to run nightly backups of (now) 170~ projects @ 225 GB~ in 4 hours without issues.
 
-### v1.1.0: Gotta Go Fast Edition 🚀
+### v1.2.0: In-Place Sync Mode
+
+This release introduces **In-Place Sync Mode**, a new backup approach that maintains a single, continuously synchronized backup directory instead of creating timestamped versions. This mode is ideal for users who want to maintain one up-to-date backup with minimal storage usage.
+
+#### Key Features:
+
+**1. In-Place Sync Mode**
+- Enabled by default when `--backupstorotate 1` (the new default)
+- Maintains a single backup directory that stays synchronized with ACC
+- Only downloads new or modified files during each sync
+- Automatically removes obsolete files no longer in ACC
+- Cleans up empty directories after file removal
+- Dramatically reduces storage requirements for regular backups
+
+**2. Improved Concurrency and Thread Safety**
+- Thread-safe directory creation with double-check locking pattern
+- Optimized concurrent file handling using ConcurrentBag collections
+- Refined semaphore limits for better performance and stability
+- Prevents race conditions during parallel project enumeration
+
+**3. Enhanced Backup Reporting**
+- Detailed statistics showing unchanged vs downloaded files
+- Clear distinction between sync mode and versioned backup modes
+- Improved progress tracking for better visibility
+
+#### Backup Modes:
+
+**In-Place Sync Mode** (`--backupstorotate 1`):
+- Single directory that stays in sync with ACC
+- Minimal storage usage
+- Automatic cleanup of obsolete files
+- Best for regular automated backups
+
+**Versioned Backup Mode** (`--backupstorotate 2+`):
+- Creates timestamped backup folders (e.g., 2024-01-15_10-30)
+- Maintains multiple backup versions
+- No cleanup of previous versions
+- Best for archival and point-in-time recovery
+
+### v1.1.0: Gotta Go Fast Edition
 
 **Important: ACCBackup now requires .NET 9 Runtime** (upgraded from .NET 8). Please ensure you have [.NET Runtime 9.X.X](https://dotnet.microsoft.com/en-us/download/dotnet/9.0) installed before upgrading.
 
@@ -111,9 +150,9 @@ settings of 15 RetryAttempts with InitialRetryInSeconds 2 totals 4 minutes of re
 --dryrun                    (Default: false) Backup will only create 0 byte placeholder files instead of downloading
 them, will still create full file structure.
 
---backupstorotate           (Default: 1) Number of previous backups to maintain (in addition 
-                            to the current backup). Minimum 1 is required for incremental 
-                            backup to work.
+--backupstorotate           (Default: 1) Number of previous backups to maintain.
+                            1 = In-place sync mode (single directory that stays in sync)
+                            2+ = Versioned backups (timestamped folders)
 
 --projectstobackup          Comma separated list of project names OR project ids to backup. If none given, all projects will be
 backed up.
@@ -162,20 +201,27 @@ Basic with email summary:
 -ACCBackup.exe -backupdirectory "C:\ACCBackup" --clientid "DRO4zxzt71HCkL34cn2tAUSRS0OQGaRT" --clientsecret "tFRHKhuIrGQUi5d3" --accountid "9b3cc923-d920-4fee-ae91-5e9c8e4040rb" --smtphost "smtp.yourlocalnetwork.dc" --smtpfromaddress "noreply@example.com" --smtpfromname "ACCBackup" --smtptoaddress "me@stewartcelani.com"
 ```
 
-Example of a daily backup with 5 daily backup folders rotating:
+Example of in-place sync mode (v1.2.0+ recommended for most users):
+
+```
+ACCBackup.exe --backupdirectory "C:\ACCBackup\Sync" --clientid "DRO4zxzt71HCkL34cn2tAUSRS0OQGaRT" --clientsecret "tFRHKhuIrGQUi5d3" --accountid "9b3cc923-d920-4fee-ae91-5e9c8e4040rb"
+```
+
+This maintains a single directory at C:\ACCBackup\Sync that stays synchronized with ACC. Only changed files are downloaded, and obsolete files are automatically removed.
+
+Example of in-place sync with explicit parameter:
+
+```
+ACCBackup.exe --backupdirectory "C:\ACCBackup\Sync" --clientid "DRO4zxzt71HCkL34cn2tAUSRS0OQGaRT" --clientsecret "tFRHKhuIrGQUi5d3" --accountid "9b3cc923-d920-4fee-ae91-5e9c8e4040rb" --backupstorotate 1
+```
+
+Example of versioned daily backup with 5 rotating folders (v1.1.0 behavior):
 
 ```
 ACCBackup.exe --backupdirectory "C:\ACCBackup\Daily" --clientid "DRO4zxzt71HCkL34cn2tAUSRS0OQGaRT" --clientsecret "tFRHKhuIrGQUi5d3" --accountid "9b3cc923-d920-4fee-ae91-5e9c8e4040rb" --backupstorotate 5
 ```
 
-Example of daily incremental backup (v1.1.0+):
-
-```
-ACCBackup.exe --backupdirectory "C:\ACCBackup\Daily" --clientid "DRO4zxzt71HCkL34cn2tAUSRS0OQGaRT" --clientsecret "tFRHKhuIrGQUi5d3" --accountid "9b3cc923-d920-4fee-ae91-5e9c8e4040rb" --backupstorotate 1
-```
-
-After the first full backup, subsequent backups will use incremental sync, dramatically reducing backup time for
-unchanged files.
+This creates timestamped folders and maintains the 5 most recent backups.
 
 Example forcing a full download (bypassing incremental backup):
 
