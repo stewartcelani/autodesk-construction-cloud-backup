@@ -1,3 +1,4 @@
+using System.IO;
 using Serilog;
 using Serilog.Events;
 using Serilog.Exceptions;
@@ -92,6 +93,8 @@ public class SerilogLogger : ILogger
     private Serilog.ILogger ConfigureLogger()
     {
         var logLevel = MapILoggerConfigurationLogLevelToSerilogLogLevel(Config.LogLevel);
+        var logDirectory = Path.Combine(AppContext.BaseDirectory, "Logs");
+        Directory.CreateDirectory(logDirectory);
         var loggerConfig = new LoggerConfiguration()
             .MinimumLevel.Is(logLevel)
             .Enrich.FromLogContext()
@@ -108,7 +111,7 @@ public class SerilogLogger : ILogger
         if (Config.LogToFile)
         {
             loggerConfig.WriteTo.File(
-                @"Logs\.log",
+                Path.Combine(logDirectory, "log.log"),
                 rollingInterval: RollingInterval.Day,
                 outputTemplate:
                 "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff}|{Level:u3}|{SourceContext}] {Message:lj}{NewLine}{Exception}",
@@ -116,14 +119,14 @@ public class SerilogLogger : ILogger
 
             if (logLevel == LogEventLevel.Verbose)
                 loggerConfig.WriteTo.File(
-                    @"Logs\.trace.log",
+                    Path.Combine(logDirectory, "log.trace.log"),
                     rollingInterval: RollingInterval.Day,
                     outputTemplate:
                     "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff}|{Level:u3}|{SourceContext}] {Message:lj}{NewLine}{Exception}",
                     restrictedToMinimumLevel: LogEventLevel.Verbose);
             else if (logLevel == LogEventLevel.Debug)
                 loggerConfig.WriteTo.File(
-                    @"Logs\.debug.log",
+                    Path.Combine(logDirectory, "log.debug.log"),
                     rollingInterval: RollingInterval.Day,
                     outputTemplate:
                     "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff}|{Level:u3}|{SourceContext}] {Message:lj}{NewLine}{Exception}",

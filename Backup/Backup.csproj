@@ -7,10 +7,10 @@
         <Nullable>enable</Nullable>
         <TargetName>ACCBackup</TargetName>
         <AssemblyName>ACCBackup</AssemblyName>
-        <Version>1.2.0</Version>
-        <AssemblyVersion>1.2.0.0</AssemblyVersion>
-        <FileVersion>1.2.0.0</FileVersion>
-        <PackageReleaseNotes>v1.2.0: In-Place Sync Mode - Single-directory synchronization with automatic cleanup</PackageReleaseNotes>
+        <Version>1.2.1</Version>
+        <AssemblyVersion>1.2.1.0</AssemblyVersion>
+        <FileVersion>1.2.1.0</FileVersion>
+        <PackageReleaseNotes>v1.2.1: Fixes initial in-place sync crash when no previous backup directory exists</PackageReleaseNotes>
     </PropertyGroup>
 
     <ItemGroup>

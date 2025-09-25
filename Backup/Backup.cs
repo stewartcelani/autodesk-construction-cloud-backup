@@ -132,27 +132,23 @@ public class Backup : IBackup
         // Consumer task: Download projects sequentially with wait time tracking
         var downloadTask = Task.Run(async () =>
         {
-            DateTime? lastDownloadEndTime = null;
-            var isFirstProject = true;
-            
+            var lastPipelineActivityTime = _backupStartTime ?? DateTime.Now;
+
             await foreach (var project in enumerationChannel.Reader.ReadAllAsync())
             {
                 // Track wait time (time between downloads)
                 var projectReceivedTime = DateTime.Now;
-                if (lastDownloadEndTime.HasValue)
+                if (projectReceivedTime > lastPipelineActivityTime)
                 {
-                    var waitTime = projectReceivedTime - lastDownloadEndTime.Value;
+                    var waitTime = projectReceivedTime - lastPipelineActivityTime;
                     _totalWaitTime = _totalWaitTime.Add(waitTime);
-                    Logger.Debug($"Waited {waitTime.TotalSeconds:F1}s for next project to be enumerated");
+
+                    if (waitTime > TimeSpan.Zero)
+                    {
+                        Logger.Debug($"Waited {waitTime.TotalSeconds:F1}s for next project to be enumerated");
+                    }
                 }
-                else if (!isFirstProject)
-                {
-                    // For the first project after initialization
-                    var waitTime = projectReceivedTime - _backupStartTime!.Value;
-                    _totalWaitTime = _totalWaitTime.Add(waitTime);
-                }
-                isFirstProject = false;
-                
+
                 // Download the project and track active download time
                 var downloadStartTime = DateTime.Now;
                 Logger.Info($"=> Downloading project {project.Name} ({project.ProjectId})");
@@ -165,7 +161,7 @@ public class Backup : IBackup
                 var downloadEndTime = DateTime.Now;
                 var downloadTime = downloadEndTime - downloadStartTime;
                 _totalDownloadTime = _totalDownloadTime.Add(downloadTime);
-                lastDownloadEndTime = downloadEndTime;
+                lastPipelineActivityTime = downloadEndTime;
                 _projectsProcessed++;
                 
                 project.BackupFinishedAt = downloadEndTime;
@@ -296,6 +292,8 @@ public class Backup : IBackup
             projects.SelectMany(p => p.FilesRecursive).Select(f => f.ApiReportedStorageSizeInMb).Sum();
         var totalFileSizeOnDiskInMb =
             projects.SelectMany(p => p.FilesRecursive).Select(f => f.FileSizeOnDiskInMb).Sum();
+        var totalFileCount = projects.SelectMany(p => p.FilesRecursive).Count();
+        var totalFolderCount = projects.SelectMany(p => p.SubfoldersRecursive).Count();
         // Calculate actual total backup time using min start and max end times
         var earliestStart = projects.Where(p => p.BackupStartedAt.HasValue)
             .Min(p => p.BackupStartedAt!.Value);
@@ -303,8 +301,17 @@ public class Backup : IBackup
             .Max(p => p.BackupFinishedAt!.Value);
         var ts = latestEnd - earliestStart;
         var backupDuration = ts.ToString(@"hh\:mm\:ss");
-        summary.Add(
-            @$"  => Backed up {totalFileSizeOnDiskInMb}/{totalApiReportedStorageSizeInMb} MB in {backupDuration} to {Config.BackupDirectory}");
+        if (Config.DryRun)
+        {
+            summary.Add(
+                @$"  => Dry run: Enumerated {totalFileCount} files ({totalApiReportedStorageSizeInMb} MB reported) across {totalFolderCount} folders in {backupDuration}; placeholders created in {Config.BackupDirectory}");
+            summary.Add("  => Note: Dry run mode writes 0-byte placeholders instead of downloading files.");
+        }
+        else
+        {
+            summary.Add(
+                @$"  => Backed up {totalFileSizeOnDiskInMb}/{totalApiReportedStorageSizeInMb} MB in {backupDuration} to {Config.BackupDirectory}");
+        }
         return summary;
     }
 
@@ -317,6 +324,8 @@ public class Backup : IBackup
 
         var totalFileSizeOnDiskInMb =
             projects.SelectMany(p => p.FilesRecursive).Select(f => f.FileSizeOnDiskInMb).Sum();
+        var totalApiReportedStorageSizeInMb =
+            projects.SelectMany(p => p.FilesRecursive).Select(f => f.ApiReportedStorageSizeInMb).Sum();
         // Calculate actual total backup time using min start and max end times
         var earliestStart = projects.Where(p => p.BackupStartedAt.HasValue)
             .Min(p => p.BackupStartedAt!.Value);
@@ -328,9 +337,13 @@ public class Backup : IBackup
         var successCount = backupSummaryLines.Count(s => s.Contains("[SUCCESS]"));
         var partialFailCount = backupSummaryLines.Count(s => s.Contains("[PARTIAL FAIL]"));
         var errorCount = backupSummaryLines.Count(s => s.Contains("[ERROR]"));
+        var headerPrefix = Config.DryRun ? "ACCBackup (Dry Run)" : "ACCBackup";
+        var sizeSummary = Config.DryRun
+            ? $"{totalFileSizeOnDiskInMb}/{totalApiReportedStorageSizeInMb} MB placeholders"
+            : $"{totalFileSizeOnDiskInMb} MB";
 
         return
-            @$"ACCBackup: {projects.Count} projects ({successCount} success, {partialFailCount} partial fail, {errorCount} error) - {totalFileSizeOnDiskInMb} MB in {backupDuration} ";
+            @$"{headerPrefix}: {projects.Count} projects ({successCount} success, {partialFailCount} partial fail, {errorCount} error) - {sizeSummary} in {backupDuration} ";
     }
 
     private string GetBackupSummaryLine(ProjectBackup project)
@@ -351,16 +364,23 @@ public class Backup : IBackup
         var allFoldersCreated = project.SubfoldersRecursive.All(f => f.Created);
         var totalFileSizeOnDiskMatchesFileSizeReportedByApi =
             totalFileSizeOnDiskInMb == totalApiReportedStorageSizeInMb;
-        
+
+        var isDryRun = Config.DryRun;
+
         // Get incremental stats to show detailed breakdown
         var stats = ApiClient.GetIncrementalStats();
         var isInSyncMode = Config.BackupsToRotate == 1;
-        
+
         var summary = string.Empty;
-        if (allFilesProcessed && allFoldersCreated && totalFileSizeOnDiskMatchesFileSizeReportedByApi)
+        if (isDryRun && allFilesProcessed && allFoldersCreated)
+        {
+            summary +=
+                $"  + [SUCCESS] {project.Name} ({project.ProjectId}) - dry run (no files downloaded) - {filesWithInfo}/{totalFiles} files across {foldersCreated}/{totalFolders} folders ({totalApiReportedStorageSizeInMb} MB reported)";
+        }
+        else if (allFilesProcessed && allFoldersCreated && totalFileSizeOnDiskMatchesFileSizeReportedByApi)
         {
             summary += $"  + [SUCCESS] {project.Name} ({project.ProjectId}) - {totalFileSizeOnDiskInMb} MB in {backupDuration} - ";
-            
+
             // Format differently based on mode
             if (isInSyncMode && (stats.copied > 0 || stats.downloaded > 0))
             {
@@ -418,6 +438,10 @@ public class Backup : IBackup
 
     private void LogProjectsSelectedForBackup(List<ProjectBackup> projects)
     {
+        if (Config.DryRun)
+        {
+            Logger.Info("=> Dry run mode enabled (files will not be downloaded)");
+        }
         Logger.Info("=================================================================================");
         Logger.Info($"=> Found {projects.Count} projects to backup:");
         foreach (var project in projects) Logger.Info($"    - {project.Name} ({project.ProjectId})");
@@ -792,7 +816,6 @@ public class Backup : IBackup
         if (_totalWaitTime.TotalMinutes > 1)
         {
             Logger.Info($"    Note: {FormatTimeSpan(_totalWaitTime)} spent waiting for project enumeration");
-            Logger.Info($"          Consider increasing concurrent enumeration limit if bottlenecked");
         }
         
         Logger.Info("=================================================================================");

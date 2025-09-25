@@ -201,7 +201,7 @@ Basic with email summary:
 -ACCBackup.exe -backupdirectory "C:\ACCBackup" --clientid "DRO4zxzt71HCkL34cn2tAUSRS0OQGaRT" --clientsecret "tFRHKhuIrGQUi5d3" --accountid "9b3cc923-d920-4fee-ae91-5e9c8e4040rb" --smtphost "smtp.yourlocalnetwork.dc" --smtpfromaddress "noreply@example.com" --smtpfromname "ACCBackup" --smtptoaddress "me@stewartcelani.com"
 ```
 
-Example of in-place sync mode (v1.2.0+ recommended for most users):
+Example of in-place sync mode (v1.2.1+ recommended for most users):
 
 ```
 ACCBackup.exe --backupdirectory "C:\ACCBackup\Sync" --clientid "DRO4zxzt71HCkL34cn2tAUSRS0OQGaRT" --clientsecret "tFRHKhuIrGQUi5d3" --accountid "9b3cc923-d920-4fee-ae91-5e9c8e4040rb"
@@ -256,6 +256,85 @@ Example backing all projects BUT two projects
 ACCBackup.exe --projectstoexclude "Test Project, 7468066c-53e6-4acf-8086-6b5fce0048d6" --backupdirectory "C:\ACCBackup" --clientid "DRO4zxzt71HCkL34cn2tAUSRS0OQGaRT" --clientsecret "tFRHKhuIrGQUi5d3" --accountid "9b3cc923-d920-4fee-ae91-5e9c8e4040rb"
 ```
 
+### Sample Output
+
+Below is a condensed example showing two consecutive runs in in-place sync mode for a single project. Identifiers have been anonymised and repetitive download lines removed for clarity.
+
+#### First run (new sync directory)
+
+```text
+[07:04:44 INF] => Starting Autodesk Construction Cloud Backup
+[07:04:44 INF] => In-place sync mode enabled (--backupstorotate 1)
+[07:04:44 INF] => No existing manifest found in sync directory, performing initial sync
+...
+[07:07:12 INF] => Enumeration complete for Contoso Stairworks (b.1234abcd-...), queuing for download
+[07:07:12 INF] => Downloading project Contoso Stairworks (b.1234abcd-...)
+    [DOWNLOADED] D:\Backups\Sync\Contoso Stairworks\...\GA-001.pdf (0.54 MB)
+    [DOWNLOADED] D:\Backups\Sync\Contoso Stairworks\...\ShopModel.dwg (0.78 MB)
+    [... additional files ...]
+[07:07:35 INF]   + [SUCCESS] Contoso Stairworks (b.1234abcd-...) - 48.18 MB in 00:02:50 - 0 unchanged, 66 downloaded, 66 total files in 265 folders
+[07:07:35 INF] =================================================================================
+[07:07:35 INF]  => BACKUP SUMMARY
+[07:07:35 INF] =================================================================================
+[07:07:35 INF]   => ACCBackup: 1 projects (1 success, 0 partial fail, 0 error) - 48.18 MB in 00:02:50
+[07:07:35 INF]   + [SUCCESS] Contoso Stairworks (b.1234abcd-...) - 48.18 MB in 00:02:50 - 0 copied, 66 downloaded, 66 total files in 265 folders
+[07:07:35 INF]   => Backed up 48.18/48.18 MB in 00:02:50 to D:\Backups\Sync\Contoso Stairworks
+[07:07:35 INF] =================================================================================
+[07:07:35 INF] =================================================================================
+[07:07:35 INF] => Incremental Backup Statistics:
+    Files copied from previous backup: 0 (0 B)
+    Files downloaded from Autodesk: 66 (48.16 MB)
+    Total files processed: 66
+[07:07:35 INF] =================================================================================
+[07:07:35 INF] =================================================================================
+[07:07:35 INF] => Pipeline Efficiency Statistics:
+    Total pipeline time: 02:52
+    Active download time: 22.9s (13.3%)
+    Wait time (idle): 02:29 (86.7%)
+    Projects processed: 1
+    Note: 02:29 spent waiting for project enumeration
+[07:07:35 INF] => Backup manifest saved to D\Backups\Sync\Contoso Stairworks\BackupManifest.json
+[07:07:35 INF] => Closing Autodesk Construction Cloud Backup
+```
+
+#### Second run (manifest present, unchanged files)
+
+```text
+[07:12:24 INF] => Starting Autodesk Construction Cloud Backup
+[07:12:24 INF] => In-place sync mode enabled (--backupstorotate 1)
+[07:12:24 INF] => Using existing manifest from sync directory for incremental update
+...
+[07:14:52 INF] => Downloading project Contoso Stairworks (b.1234abcd-...)
+    [UNCHANGED] D:\Backups\Sync\Contoso Stairworks\...\GA-001.pdf (0.54 MB)
+    [UNCHANGED] D:\Backups\Sync\Contoso Stairworks\...\ShopModel.dwg (0.78 MB)
+    [... unchanged files omitted ...]
+[07:15:12 INF]   + [SUCCESS] Contoso Stairworks (b.1234abcd-...) - 48.18 MB in 00:02:28 - 66 unchanged, 0 downloaded, 66 total files in 265 folders
+[07:15:12 INF] =================================================================================
+[07:15:12 INF]  => BACKUP SUMMARY
+[07:15:12 INF] =================================================================================
+[07:15:12 INF]   => ACCBackup: 1 projects (1 success, 0 partial fail, 0 error) - 48.18 MB in 00:02:28
+[07:15:12 INF]   + [SUCCESS] Contoso Stairworks (b.1234abcd-...) - 48.18 MB in 00:02:28 - 66 copied, 0 downloaded, 66 total files in 265 folders
+[07:15:12 INF]   => Backed up 48.18/48.18 MB in 00:02:28 to D:\Backups\Sync\Contoso Stairworks
+[07:15:12 INF] =================================================================================
+[07:15:12 INF] =================================================================================
+[07:15:12 INF] => Incremental Backup Statistics:
+    Files copied from previous backup: 66 (48.16 MB)
+    Files downloaded from Autodesk: 0 (0 B)
+    Incremental efficiency: 100.00% data reused from previous backup
+[07:15:12 INF] =================================================================================
+[07:15:12 INF] =================================================================================
+[07:15:12 INF] => Pipeline Efficiency Statistics:
+    Total pipeline time: 02:30
+    Active download time: 0.2s (0.2%)
+    Wait time (idle): 02:29 (99.8%)
+    Projects processed: 1
+    Note: 02:29 spent waiting for project enumeration
+[07:15:12 INF] => Backup manifest saved to D\Backups\Sync\Contoso Stairworks\BackupManifest.json
+[07:15:12 INF] => Closing Autodesk Construction Cloud Backup
+```
+
+These excerpts show the expected behaviour: the initial run downloads every file, while the next run reuses the manifest, verifies the existing files, and reports both incremental efficiency and how much of the pipeline time was spent waiting for enumeration versus performing work. Subsequent incremental runs that find no changes produce similar output (all files marked `[UNCHANGED]`, download counters at zero, and pipeline time dominated by enumeration).
+
 ### Debugging
 
 - Log files are located in ACCBackup.exe\Logs
@@ -264,7 +343,7 @@ ACCBackup.exe --projectstoexclude "Test Project, 7468066c-53e6-4acf-8086-6b5fce0
 - First step is to run with the --debuglogging flag
 - If the --debuglogging flag doesn't point you in the right direction the --tracelogging flag should be used.
 - If all else fails log an issue via the repo with a link to your --tracelogginng log file and I will investigate.
-- Or/and email bold.oil7762@fastmail.com with your log file attached.
+- Or/and email me@stewartcelani.com with your log file attached.
 
 ### ApiClient
 
@@ -310,7 +389,7 @@ ApiClient client = TwoLeggedApiClient
         options.HubId = $"b.{accountId}";
         options.HttpClient = new HttpClient();
         options.DryRun = false;
-        options.Logger = new NLogLogger(new NLogLoggerConfiguration()
+        options.Logger = new SerilogLogger(new SerilogLoggerConfiguration
         {
             LogLevel = LogLevel.Trace,
             LogToConsole = true,

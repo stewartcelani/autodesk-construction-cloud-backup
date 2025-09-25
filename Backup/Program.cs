@@ -1,4 +1,5 @@
-﻿using ACC.Backup;
+﻿using System.IO;
+using ACC.Backup;
 using Library.Logger;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -21,6 +22,9 @@ var host = Host.CreateDefaultBuilder(args)
             LogEventLevel.Information;
 
         // Serilog logging setup - code-first configuration
+        var logDirectory = Path.Combine(AppContext.BaseDirectory, "Logs");
+        Directory.CreateDirectory(logDirectory);
+
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Is(logLevel)
             .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
@@ -33,7 +37,7 @@ var host = Host.CreateDefaultBuilder(args)
                 outputTemplate: "[{Timestamp:HH:mm:ss} {SourceContext} {Level:u3}] {Message:lj}{NewLine}{Exception}",
                 restrictedToMinimumLevel: logLevel)
             .WriteTo.File(
-                "Logs/log-.txt",
+                Path.Combine(logDirectory, "log-.txt"),
                 rollingInterval: RollingInterval.Day,
                 outputTemplate:
                 "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff} {Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}",
