@@ -1,5 +1,11 @@
 # Changelog
 
+## Version 1.2.1 (2025-09-29)
+
+### Bug Fixes
+
+- Fixed a regression where the initial in-place sync run could fail with an empty path error when no previous backup existed
+
 ## Version 1.2.0 (2025-09-22)
 
 ### Major Features

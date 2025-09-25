@@ -18,7 +18,7 @@ public class ApiClient : IApiClient
     private long _bytesDownloaded;
     private int _filesCopied;
     private int _filesDownloaded;
-    private string _previousBackupDirectory = string.Empty;
+    private string? _previousBackupDirectory;
 
     // Incremental backup support
     private BackupManifest? _previousBackupManifest;
@@ -208,7 +208,15 @@ public class ApiClient : IApiClient
     public void SetPreviousBackupManifest(BackupManifest manifest)
     {
         _previousBackupManifest = manifest;
-        if (manifest != null) _previousBackupDirectory = manifest.BackupDirectory;
+
+        if (manifest != null && !string.IsNullOrWhiteSpace(manifest.BackupDirectory))
+        {
+            _previousBackupDirectory = manifest.BackupDirectory;
+        }
+        else
+        {
+            _previousBackupDirectory = null;
+        }
     }
 
     public (int downloaded, int copied, long bytesDownloaded, long bytesCopied) GetIncrementalStats()
@@ -353,9 +361,10 @@ public class ApiClient : IApiClient
         var downloadPath = Path.Combine(rootDirectory, file.GetPath()[1..]);
         
         // Check if we're in sync mode (rootDirectory is within the previous backup directory)
-        var isInPlaceSync = _previousBackupDirectory != null && 
+        var previousBackupDirectory = _previousBackupDirectory;
+        var isInPlaceSync = !string.IsNullOrWhiteSpace(previousBackupDirectory) &&
                            Path.GetFullPath(rootDirectory).StartsWith(
-                               Path.GetFullPath(_previousBackupDirectory), 
+                               Path.GetFullPath(previousBackupDirectory!),
                                StringComparison.OrdinalIgnoreCase);
 
         // Check if file exists in previous backup and can be copied/skipped instead of downloaded
@@ -407,45 +416,55 @@ public class ApiClient : IApiClient
                     else
                     {
                         // Not in sync mode - try to copy from previous backup
-                        var sourcePath = Path.Combine(_previousBackupDirectory, manifestKey.Replace('/', Path.DirectorySeparatorChar));
-                        if (System.IO.File.Exists(sourcePath))
+                        if (!string.IsNullOrWhiteSpace(previousBackupDirectory))
                         {
-                            var sourceInfo = new FileInfo(sourcePath);
-                            if (sourceInfo.Length == file.StorageSize)
-                                try
-                                {
-                                    // Copy file from previous backup
-                                    System.IO.File.Copy(sourcePath, downloadPath, true);
-                                    file.FileInfo = new FileInfo(downloadPath);
-                                    file.FileSizeOnDisk = file.FileInfo.Length;
-
-                                    // Verify the copy
-                                    if (file.FileInfo.Length == file.StorageSize)
-                                    {
-                                        Interlocked.Increment(ref _filesCopied);
-                                        Interlocked.Add(ref _bytesCopied, file.StorageSize);
-                                        Config.Logger?.Info(
-                                            $"[COPIED] {file.FileInfo.FullName} ({file.FileSizeOnDiskInMb} MB)");
-                                        return file.FileInfo;
-                                    }
-
-                                    Config.Logger?.Warn(
-                                        $"File size mismatch after copy for {file.Name}, downloading instead");
+                            var sourcePath = Path.Combine(previousBackupDirectory!,
+                                manifestKey.Replace('/', Path.DirectorySeparatorChar));
+                            if (System.IO.File.Exists(sourcePath))
+                            {
+                                var sourceInfo = new FileInfo(sourcePath);
+                                if (sourceInfo.Length == file.StorageSize)
                                     try
                                     {
-                                        System.IO.File.Delete(downloadPath);
+                                        // Copy file from previous backup
+                                        System.IO.File.Copy(sourcePath, downloadPath, true);
+                                        file.FileInfo = new FileInfo(downloadPath);
+                                        file.FileSizeOnDisk = file.FileInfo.Length;
+
+                                        // Verify the copy
+                                        if (file.FileInfo.Length == file.StorageSize)
+                                        {
+                                            Interlocked.Increment(ref _filesCopied);
+                                            Interlocked.Add(ref _bytesCopied, file.StorageSize);
+                                            Config.Logger?.Info(
+                                                $"[COPIED] {file.FileInfo.FullName} ({file.FileSizeOnDiskInMb} MB)");
+                                            return file.FileInfo;
+                                        }
+
+                                        Config.Logger?.Warn(
+                                            $"File size mismatch after copy for {file.Name}, downloading instead");
+                                        try
+                                        {
+                                            System.IO.File.Delete(downloadPath);
+                                        }
+                                        catch (IOException ioEx)
+                                        {
+                                            Config.Logger?.Debug(
+                                                $"Could not delete mismatched file {downloadPath}: {ioEx.Message}");
+                                            // Continue anyway - will overwrite
+                                        }
                                     }
-                                    catch (IOException ioEx)
+                                    catch (Exception ex)
                                     {
-                                        Config.Logger?.Debug($"Could not delete mismatched file {downloadPath}: {ioEx.Message}");
-                                        // Continue anyway - will overwrite
+                                        Config.Logger?.Warn(
+                                            $"Failed to copy file from previous backup: {ex.Message}, downloading instead");
                                     }
-                                }
-                                catch (Exception ex)
-                                {
-                                    Config.Logger?.Warn(
-                                        $"Failed to copy file from previous backup: {ex.Message}, downloading instead");
-                                }
+                            }
+                        }
+                        else
+                        {
+                            Config.Logger?.Debug(
+                                $"Previous backup directory unavailable for {file.Name}, downloading instead");
                         }
                     }
                 }
